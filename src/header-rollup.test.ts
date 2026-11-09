@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test"
 import { nestedChart, nestedLedger } from "./header-rollup.fixtures"
-import { createChartOfAccounts, headerRollup, reverse, type Transaction } from "./index"
+import { balances, createChartOfAccounts, headerRollup, reverse, type Transaction } from "./index"
 import { accountInputs, bal, chart, ledger, thb, tx } from "./queries.fixtures"
 
 const row = bal
@@ -71,8 +71,13 @@ describe("headerRollup", () => {
 	})
 
 	it("covers a Header's whole subtree, so a parent includes its child Header's Leaves", () => {
-		expect(amountOf("current", nestedLedger, asOf, nestedChart)).toBe(4_080_000)
-		expect(amountOf("assets", nestedLedger, asOf, nestedChart)).toBe(4_580_000)
+		const assets = amountOf("assets", nestedLedger, asOf, nestedChart)!
+		const current = amountOf("current", nestedLedger, asOf, nestedChart)!
+		const broker = balances(nestedLedger, asOf, nestedChart).find((r) => r.accountId === "broker")!
+		expect(current).toBe(4_080_000)
+		expect(assets).toBe(4_580_000)
+		// `assets` sums `current`'s Leaves plus `broker`, the THB Leaf beside the `current` Header.
+		expect(assets - current).toBe(broker.amount)
 	})
 
 	it("includes Transactions dated on asOf and excludes later ones", () => {
