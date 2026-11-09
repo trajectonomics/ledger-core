@@ -9,8 +9,10 @@ Domain vocabulary for `ledger-core`.
 - **Normal Balance**: The side on which an Account Type normally grows. **Debit** for `asset` and `expense`; **Credit** for `liability`, `equity`, and `income`.
 - **Entity**: The legal/accounting body that owns an Account (`entityId`, `"default"` if omitted). A Transaction must balance within each Entity separately.
 - **Chart of Accounts**: A validated set of Accounts. Every parent exists, shares its child's Entity and Account Type, and the hierarchy has no cycles. A Header Account may use a different Currency from its children. Produced only by `createChartOfAccounts`; read-only afterwards.
-- **Header Account** (summary): An Account named as another Account's `parentId`. It only aggregates; nothing may be posted to it.
+- **Header Account** (summary): An Account named as another Account's `parentId`. It only aggregates; nothing may be posted to it, and its **Header Rollup** is per Currency, not one amount.
+- **Header Rollup**: The sum of a Header Account's descendant Leaf Accounts' Balances, per Currency, up to and including a date. The Currency is a descendant's, which need not be the Header's own. Every Header Account has one, and it covers the whole subtree below it.
 - **Leaf Account** (detail): An Account no other Account names as parent. Postings target Leaf Accounts only.
+- **Descendant Leaf Account**: A Leaf Account reached from an Account by following `parentId` links transitively. A Header Account's subtree is the set of them.
 - **Currency**: An ISO 4217 alphabetic code (`THB`, `USD`, `JPY`). Its **Minor Unit** precision comes from the runtime's `Intl` data (THB 2, JPY 0, KWD 3, CLF 4).
 - **Minor Unit**: The smallest division of a Currency (satang, cent, yen). All amounts are stored as safe integers of Minor Units; floats never enter the model. `toMinorUnits` / `fromMinorUnits` convert at the boundary.
 - **Posting**: One signed, non-zero amount in one Currency against one Leaf Account, optionally tagged with **Dimensions**.
