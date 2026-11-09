@@ -12,6 +12,9 @@ Decisions behind the API live in `docs/adr/`; vocabulary lives in `GLOSSARY.md`.
 - Values returned by a smart constructor are frozen. A caller-supplied object is never mutated.
 - A rule that can reject input gets its own `LedgerErrorCode`. One code per rule, no exceptions:
   never widen an existing code's meaning, and never let two rules share one.
+- Adding or narrowing a `LedgerErrorCode` is breaking for a consumer's exhaustive `switch`: that PR's
+  title is `feat!:` and nothing else, its body names the code, and no body line starts with
+  `BREAKING CHANGE:` unless it is meant (ADR-0005).
 - A thrown error's `field` mirrors the caller's input path (`postings[2].accountId`), never an
   internal variable name.
 
