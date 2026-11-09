@@ -44,6 +44,8 @@ export const tx = (id: string, date: string, postings: PostingInput[]): Transact
  * Hand-computed ledger. As of 2024-02-28, in satang:
  * cash 3_780_000, savings 300_000, loan -100_000, equity -200_000, salary -4_000_000,
  * food 200_000, interest 20_000, usd-wallet 10_000, equity-usd -10_000.
+ *
+ * The `assets` Header over `cash` and `savings` therefore rolls up to 4_080_000.
  */
 export const ledger: readonly Transaction[] = [
 	tx("t1", "2024-01-01", [thb("cash", 100_000), thb("equity", -100_000)]),

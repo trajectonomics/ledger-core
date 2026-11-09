@@ -1,6 +1,12 @@
 import { describe, expect, it } from "bun:test"
+import {
+	coveredLeaves,
+	headerDescendants,
+	nestedChart,
+	rootHeaders,
+} from "./header-rollup.fixtures"
 import type { PostingInput, Transaction } from "./index"
-import { balances, netWorth, profitAndLoss, trialBalance } from "./index"
+import { balances, headerRollup, netWorth, profitAndLoss, trialBalance } from "./index"
 import { chart, tx } from "./queries.fixtures"
 
 /** Deterministic mulberry32 PRNG so failures are reproducible. */
@@ -65,6 +71,15 @@ const byPair = (
 	rows: readonly { entityId: string; currency: string; amount: number }[],
 ): Map<string, number> => new Map(rows.map((r) => [pairKey(r), r.amount]))
 
+/** Sum amounts per `(Entity, Currency)`, keeping pairs that net to zero. */
+const sumByPair = (
+	rows: readonly { entityId: string; currency: string; amount: number }[],
+): Map<string, number> => {
+	const sums = new Map<string, number>()
+	for (const r of rows) sums.set(pairKey(r), (sums.get(pairKey(r)) ?? 0) + r.amount)
+	return sums
+}
+
 const seeds = Array.from({ length: 200 }, (_, i) => i + 1)
 
 describe("query properties", () => {
@@ -92,6 +107,9 @@ describe("query properties", () => {
 			const other = shuffled(txs, rng(seed + 1000))
 			const period = { from: "2024-02-01", to: "2024-03-31" }
 			expect(balances(other, "2024-02-20", chart)).toEqual(balances(txs, "2024-02-20", chart))
+			expect(headerRollup(other, "2024-02-20", nestedChart)).toEqual(
+				headerRollup(txs, "2024-02-20", nestedChart),
+			)
 			expect(trialBalance(other, "2024-02-20", chart)).toEqual(
 				trialBalance(txs, "2024-02-20", chart),
 			)
@@ -129,6 +147,40 @@ describe("query properties", () => {
 			const grouped = profitAndLoss(txs, { ...options, groupBy: "team" }, chart).totals
 			const plain = profitAndLoss(txs, options, chart).totals
 			expect(grouped, `seed ${seed}`).toEqual(plain)
+		}
+	})
+
+	it("a Header's rows equal the Balances of its descendant Leaves", () => {
+		for (const seed of seeds) {
+			const txs = ledgerOf(seed)
+			const asOf = "2024-12-31"
+			const leafRows = balances(txs, asOf, nestedChart)
+			const expected = new Map<string, number>()
+			for (const [header, descendants] of Object.entries(headerDescendants)) {
+				for (const leaf of descendants) {
+					const leafRow = leafRows.find((r) => r.accountId === leaf)!
+					const key = `${header}|${pairKey(leafRow)}`
+					expected.set(key, (expected.get(key) ?? 0) + leafRow.amount)
+				}
+			}
+			const actual = new Map(
+				headerRollup(txs, asOf, nestedChart).map((r) => [`${r.accountId}|${pairKey(r)}`, r.amount]),
+			)
+			expect(actual, `seed ${seed}`).toEqual(expected)
+		}
+	})
+
+	it("the documented non-overlapping subset equals every covered Leaf's Balance", () => {
+		for (const seed of seeds) {
+			const txs = ledgerOf(seed)
+			const asOf = "2024-12-31"
+			const roots = headerRollup(txs, asOf, nestedChart).filter((r) =>
+				rootHeaders.includes(r.accountId),
+			)
+			const covered = balances(txs, asOf, nestedChart).filter((r) =>
+				coveredLeaves.includes(r.accountId),
+			)
+			expect(sumByPair(roots), `seed ${seed}`).toEqual(sumByPair(covered))
 		}
 	})
 })

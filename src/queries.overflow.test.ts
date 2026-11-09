@@ -1,6 +1,15 @@
 import { describe, expect, it } from "bun:test"
 import { codeOf } from "./builders.fixtures"
-import { balance, balances, netWorth, profitAndLoss, trialBalance } from "./index"
+import {
+	balance,
+	balances,
+	createChartOfAccounts,
+	headerRollup,
+	netWorth,
+	profitAndLoss,
+	trialBalance,
+	validateTransaction,
+} from "./index"
 import { chart, thb, tx } from "./queries.fixtures"
 
 const MAX = Number.MAX_SAFE_INTEGER
@@ -89,5 +98,47 @@ describe("overflow", () => {
 		const txs = [post("a", "food", "cash", MAX), post("b", "food", "savings", 1)]
 		expect(fieldOf(() => netWorth(txs, "2024-01-01", chart))).toBe("netWorth[food]")
 		expect(fieldOf(() => balance(txs, "cash", "2024-01-01", chart))).toBe("balance[food]")
+	})
+
+	it("rejects a Header rollup row that overflows when every Leaf is safe", () => {
+		const txs = [post("a", "cash", "equity", BIG), post("b", "savings", "salary", BIG)]
+		expect(thrown(() => headerRollup(txs, "2024-01-01", chart))).toMatchObject({
+			code: "AMOUNT_OVERFLOW",
+			field: "headerRollup[assets/THB]",
+		})
+	})
+
+	it("names the query called for a Leaf it rolls up, covered or not", () => {
+		const covered = [post("a", "cash", "equity", MAX), post("b", "cash", "equity", 1)]
+		expect(fieldOf(() => headerRollup(covered, "2024-01-01", chart))).toBe("headerRollup[cash]")
+		const uncovered = [post("a", "food", "cash", MAX), post("b", "food", "savings", 1)]
+		expect(fieldOf(() => headerRollup(uncovered, "2024-01-01", chart))).toBe("headerRollup[food]")
+	})
+
+	it("reports the first overflowing Header row in sorted order", () => {
+		const nested = createChartOfAccounts([
+			{ id: "expenses", type: "expense", currency: "THB" },
+			{ id: "food", type: "expense", currency: "THB", parentId: "expenses" },
+			{ id: "interest", type: "expense", currency: "THB", parentId: "expenses" },
+			{ id: "assets", type: "asset", currency: "THB" },
+			{ id: "property", type: "asset", currency: "THB", parentId: "assets" },
+			{ id: "receivables", type: "asset", currency: "THB", parentId: "assets" },
+		])
+		const txs = [
+			validateTransaction(
+				{
+					id: "a",
+					date: "2024-01-01",
+					postings: [
+						{ accountId: "food", amount: BIG, currency: "THB" },
+						{ accountId: "interest", amount: BIG, currency: "THB" },
+						{ accountId: "property", amount: -BIG, currency: "THB" },
+						{ accountId: "receivables", amount: -BIG, currency: "THB" },
+					],
+				},
+				nested,
+			),
+		]
+		expect(fieldOf(() => headerRollup(txs, "2024-01-01", nested))).toBe("headerRollup[assets/THB]")
 	})
 })

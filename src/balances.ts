@@ -17,7 +17,10 @@ export interface BalanceRow {
 }
 
 /** Order rows by `entityId`, `accountId`, then `currency`, by code unit. */
-export const compareRows = (a: BalanceRow, b: BalanceRow): number =>
+export const compareRows = (
+	a: Pick<BalanceRow, "entityId" | "accountId" | "currency">,
+	b: Pick<BalanceRow, "entityId" | "accountId" | "currency">,
+): number =>
 	byCodeUnit(a.entityId, b.entityId) ||
 	byCodeUnit(a.accountId, b.accountId) ||
 	byCodeUnit(a.currency, b.currency)
@@ -54,9 +57,8 @@ export const leafBalances = (
 
 /**
  * Every Leaf Account's Balance up to and including `asOf`, zeros included, sorted. Header
- * Accounts never appear, so summing the rows never double counts.
- *
- * TODO(#14): Header Account roll-ups live in a separate query, never in these rows.
+ * Accounts never appear, so summing the rows never double counts: their rollups come from
+ * `headerRollup`.
  */
 export const balances = (
 	transactions: readonly Transaction[],

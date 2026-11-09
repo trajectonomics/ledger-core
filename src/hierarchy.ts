@@ -43,3 +43,19 @@ export const checkHierarchy = (accounts: ReadonlyMap<AccountId, Account>): void 
 		checkAcyclic(account, accounts, i)
 	}
 }
+
+/** The Header ancestors of `id`, nearest first. Internal: the package entry does not export it. */
+export const headerChainOf = (
+	accounts: ReadonlyMap<AccountId, Account>,
+	id: AccountId,
+): readonly Account[] => {
+	const chain: Account[] = []
+	let parent = accounts.get(id)?.parentId
+	while (parent !== undefined) {
+		const account = accounts.get(parent)
+		if (account === undefined) break
+		chain.push(account)
+		parent = account.parentId
+	}
+	return chain
+}

@@ -7,9 +7,8 @@ import type { Transaction } from "./transaction"
 
 /**
  * One Leaf Account's Balance up to and including `asOf`: the row `balances` gives for it.
- * Throws `UNKNOWN_ACCOUNT` for an id outside the chart and `NON_LEAF_ACCOUNT` for a Header.
- *
- * TODO(#14): a Header's roll-up Balance is a separate query, so a Header id is rejected here.
+ * Throws `UNKNOWN_ACCOUNT` for an id outside the chart and `NON_LEAF_ACCOUNT` for a Header, whose
+ * rollup comes from `headerRollup`.
  */
 export const balance = (
 	transactions: readonly Transaction[],
