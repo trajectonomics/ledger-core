@@ -1,5 +1,12 @@
 import { describe, expect, it } from "bun:test"
-import { balances, netWorth, parseCurrency, profitAndLoss, trialBalance } from "./index"
+import {
+	balances,
+	headerRollup,
+	netWorth,
+	parseCurrency,
+	profitAndLoss,
+	trialBalance,
+} from "./index"
 import { bal, chart, ledger, thb, tot, tx } from "./queries.fixtures"
 
 const trialTotal = (entityId: string, currency: string, debit: number, credit: number) => ({
@@ -53,6 +60,7 @@ describe("query results", () => {
 	it("returns frozen rows and totals", () => {
 		const results = [
 			{ rows: balances(ledger, asOf, chart) },
+			{ rows: headerRollup(ledger, asOf, chart) },
 			netWorth(ledger, asOf, chart),
 			trialBalance(ledger, asOf, chart),
 			profitAndLoss(ledger, year, chart),
@@ -73,9 +81,15 @@ describe("query results", () => {
 		const where = { costCentre: "home" }
 		const snapshot = JSON.stringify([ledger, [...chart.values()], where])
 		balances(ledger, asOf, chart)
+		headerRollup(ledger, asOf, chart)
 		netWorth(ledger, asOf, chart)
 		trialBalance(ledger, asOf, chart)
 		profitAndLoss(ledger, { ...year, groupBy: "costCentre", where }, chart)
 		expect(JSON.stringify([ledger, [...chart.values()], where])).toBe(snapshot)
+	})
+
+	it("survives a JSON round trip", () => {
+		const rows = headerRollup(ledger, asOf, chart)
+		expect(JSON.parse(JSON.stringify(rows))).toEqual(rows)
 	})
 })
