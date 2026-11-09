@@ -29,6 +29,9 @@ interface RollupSlot {
  * never sum the array across depths. Keep the rows whose Account has no Header ancestor for
  * non-overlapping totals.
  *
+ * This is not a whole-Account-Type total: a Leaf with no Header ancestor appears in no row, so
+ * total an Account Type from `balances` instead.
+ *
  * TODO(#34): a period rollup over `{ from, to }` is a separate query.
  */
 export const headerRollup = (
