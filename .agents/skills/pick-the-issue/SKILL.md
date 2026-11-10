@@ -1,12 +1,12 @@
 ---
 name: pick-the-issue
-description: Pick the next open, unblocked issue across the repository or organization that is not currently handled by any active T3 Code session, summarize it, and provide Matt Pocock skill routing and execution commands.
+description: Pick the next open, unblocked issue for the current repository that is not currently handled by any active T3 Code session, summarize it, and provide Matt Pocock skill routing and execution commands.
 disable-model-invocation: true
 ---
 
 # Pick The Issue
 
-Pick the next highest-leverage, unblocked GitHub issue across Trajectonomics repositories that has no active T3 Code session working on it, provide a concise executive summary, and route it through Matt Pocock's skills framework (`ask-matt`) to advise on the exact commands and workflow.
+Pick the next highest-leverage, unblocked GitHub issue in the current repository that has no active T3 Code session working on it, provide a concise executive summary, and route it through Matt Pocock's skills framework (`ask-matt`) to advise on the exact commands and workflow.
 
 ## Overview
 
@@ -15,7 +15,7 @@ When choosing the next task, agents should not pick issues blindly or pick issue
 2. Are blocked by open dependencies or upstream issues.
 3. Lack necessary domain grounding or groom decisions.
 
-This skill inspects open issues across the repository/organization, resolves dependency graphs, excludes in-flight T3 Code threads, and routes the winning issue into the right Matt Pocock engineering flow.
+This skill inspects open issues in the current repository only, resolves dependency graphs, excludes in-flight T3 Code threads, and routes the winning issue into the right Matt Pocock engineering flow.
 
 ## How to Run
 
@@ -27,19 +27,17 @@ Run the included automated resolver script:
 # In the current repo:
 python3 <skill-dir>/scripts/pick_issue.py
 
-# Across all repositories in the organization:
-python3 <skill-dir>/scripts/pick_issue.py --all-org
-
 # As structured JSON (for agent parsing):
 python3 <skill-dir>/scripts/pick_issue.py --json
 ```
 
 The script automatically:
-1. Queries GitHub CLI (`gh issue list`, `gh issue view`).
-2. Checks GitHub native `blocked-by` metadata and body dependency patterns (verifying whether blocker issues are closed or open).
-3. Reads active runs and thread titles from T3 Code (`statev2.sqlite` / thread list) to exclude issues actively in-flight.
-4. Ranks ready issues by dependency leverage (issues that unblock others first) and FIFO order.
-5. Runs the issue through Matt Pocock's `ask-matt` router.
+1. Detects the current repository from git remote.
+2. Queries GitHub CLI (`gh issue list`, `gh issue view`) for open issues in the current repository only.
+3. Checks GitHub native `blocked-by` metadata and body dependency patterns (verifying whether blocker issues are closed or open).
+4. Reads active runs and thread titles from T3 Code (`statev2.sqlite` / thread list) to exclude issues actively in-flight.
+5. Ranks ready issues by dependency leverage (issues that unblock others first) and FIFO order.
+6. Runs the issue through Matt Pocock's `ask-matt` router.
 
 ### Option 2: Step-by-Step Agent Protocol
 
@@ -48,10 +46,10 @@ If running manually or in an environment without direct script execution:
 1. **List Active T3 Code Sessions**:
    - Check `t3_thread_list` with `{"allProjects": true, "limit": 20}`.
    - Note down thread titles and running tasks (e.g. `Deterministic Event Projection Engine`, `US 2026 State Income Tax Engine`, `Implement Issue 12`).
-   - Any open issue matching an active thread title or issue number is marked **HANDLED** and skipped.
+   - Any open issue matching an active thread title or issue number in the current repository is marked **HANDLED** and skipped.
 
 2. **List Open Issues**:
-   - Run `gh issue list --state open --json number,title,labels,body`.
+   - Run `gh issue list --state open --json number,title,labels,body` in the current repository.
 
 3. **Check Blockers**:
    - For candidate issues, inspect `gh issue view <number>`.

@@ -2,7 +2,7 @@
 """
 pick_issue.py
 
-Discovers open GitHub issues across a repo or the entire organization,
+Discovers open GitHub issues for the current repository only,
 filters out:
   1. Issues that are blocked (by open dependencies, GitHub blocked-by links, or body text)
   2. Issues currently being handled by active sessions in T3 Code
@@ -39,26 +39,16 @@ def run_command(cmd: List[str]) -> Tuple[int, str, str]:
 
 def get_current_repo() -> Optional[str]:
     code, stdout, _ = run_command(["git", "config", "--get", "remote.origin.url"])
-    if code != 0 or not stdout:
-        return None
-    url = stdout.strip()
-    m = re.search(r"github\.com[:/]([\w.-]+/[\w.-]+?)(?:\.git)?$", url)
-    if m:
-        return m.group(1)
+    if code == 0 and stdout:
+        url = stdout.strip()
+        m = re.search(r"github\.com[:/]([\w.-]+/[\w.-]+?)(?:\.git)?$", url)
+        if m:
+            return m.group(1)
+    # Fallback to gh repo view
+    code, stdout, _ = run_command(["gh", "repo", "view", "--json", "nameWithOwner", "-q", ".nameWithOwner"])
+    if code == 0 and stdout.strip():
+        return stdout.strip()
     return None
-
-
-def get_org_repos(org: str) -> List[str]:
-    code, stdout, stderr = run_command([
-        "gh", "repo", "list", org, "--limit", "100", "--json", "nameWithOwner"
-    ])
-    if code != 0:
-        return []
-    try:
-        items = json.loads(stdout)
-        return [item["nameWithOwner"] for item in items if "nameWithOwner" in item]
-    except Exception:
-        return []
 
 
 def get_active_t3_threads(custom_threads: Optional[List[str]] = None) -> List[Dict[str, Any]]:
@@ -142,9 +132,15 @@ def is_thread_for_repo(t: Dict[str, Any], repo: str) -> bool:
     if re.search(rf"\b{re.escape(repo_basename)}\b", t_lower) or repo.lower() in t_lower:
         return True
 
+    known_repos = {
+        "tax-core", "sim-core", "ledger-core", "cli",
+        "design-system", "technical-template", "internal-skills",
+        "agentic-inbox", "mcp-auth-gateway", "cicd", "infra",
+    }
+
     # If it was a custom thread without project metadata:
     if t.get("is_custom"):
-        known_other = {"tax-core", "sim-core", "ledger-core", "cli", "design-system", "technical-template", "internal-skills"} - {repo_basename}
+        known_other = known_repos - {repo_basename}
         if any(re.search(rf"\b{re.escape(k)}\b", t_lower) for k in known_other):
             return False
         return True
@@ -152,8 +148,6 @@ def is_thread_for_repo(t: Dict[str, Any], repo: str) -> bool:
     # 2. Check project name and workspace root
     ws = t.get("workspace_root") or ""
     p_name = (t.get("project_name") or "").lower()
-
-    known_repos = {"tax-core", "sim-core", "ledger-core", "cli", "design-system", "technical-template", "internal-skills"}
 
     if ws:
         ws_base = os.path.basename(os.path.normpath(ws)).lower()
@@ -403,54 +397,54 @@ def summarize_issue(issue: Dict[str, Any]) -> str:
 
 
 def pick_issue(
-    repos: List[str],
+    repo: str,
     active_threads: List[Dict[str, Any]],
     output_json: bool = False,
 ) -> None:
     all_candidates = []
     status_cache: Dict[str, bool] = {}
 
-    for repo in repos:
-        code, stdout, stderr = run_command([
-            "gh", "issue", "list", "--repo", repo, "--state", "open", "--limit", "50",
-            "--json", "number,title,labels,body,url,createdAt,updatedAt"
-        ])
-        if code != 0:
-            continue
+    code, stdout, stderr = run_command([
+        "gh", "issue", "list", "--repo", repo, "--state", "open", "--limit", "50",
+        "--json", "number,title,labels,body,url,createdAt,updatedAt"
+    ])
+    if code == 0:
         try:
             issues = json.loads(stdout)
         except Exception:
-            continue
+            issues = []
+    else:
+        issues = []
 
-        for issue in issues:
-            num = issue["number"]
-            title = issue["title"]
+    for issue in issues:
+        num = issue["number"]
+        title = issue["title"]
 
-            # 1. Check if handled by active T3 session
-            is_handled, thread_title = check_is_handled_by_t3(repo, num, title, active_threads)
+        # 1. Check if handled by active T3 session
+        is_handled, thread_title = check_is_handled_by_t3(repo, num, title, active_threads)
 
-            # 2. Check blockers
-            details = get_issue_details(repo, num)
-            is_blocked, reasons = check_is_blocked(repo, issue, details, status_cache)
+        # 2. Check blockers
+        details = get_issue_details(repo, num)
+        is_blocked, reasons = check_is_blocked(repo, issue, details, status_cache)
 
-            route = route_ask_matt(issue, details)
+        route = route_ask_matt(issue, details)
 
-            candidate = {
-                "repo": repo,
-                "number": num,
-                "title": title,
-                "url": issue.get("url"),
-                "labels": [l.get("name") for l in issue.get("labels", [])],
-                "created_at": issue.get("createdAt"),
-                "is_handled": is_handled,
-                "handled_by": thread_title,
-                "is_blocked": is_blocked,
-                "blocked_reasons": reasons,
-                "blocking": details.get("blocking", []),
-                "ask_matt": route,
-                "summary": summarize_issue(issue),
-            }
-            all_candidates.append(candidate)
+        candidate = {
+            "repo": repo,
+            "number": num,
+            "title": title,
+            "url": issue.get("url"),
+            "labels": [l.get("name") for l in issue.get("labels", [])],
+            "created_at": issue.get("createdAt"),
+            "is_handled": is_handled,
+            "handled_by": thread_title,
+            "is_blocked": is_blocked,
+            "blocked_reasons": reasons,
+            "blocking": details.get("blocking", []),
+            "ask_matt": route,
+            "summary": summarize_issue(issue),
+        }
+        all_candidates.append(candidate)
 
     # Filter unblocked and not handled
     ready_candidates = [
@@ -472,6 +466,7 @@ def pick_issue(
 
     if output_json:
         result = {
+            "repo": repo,
             "picked": ready_candidates[0] if ready_candidates else None,
             "ready_candidates": ready_candidates,
             "total_open": len(all_candidates),
@@ -485,7 +480,7 @@ def pick_issue(
     print("=" * 70)
     print("🎯 Trajectonomics Issue Picker")
     print("=" * 70)
-    print(f"Scanned {len(repos)} repositories: {', '.join(repos)}")
+    print(f"Target repository: {repo}")
     print(f"Active T3 Code threads monitored: {len(active_threads)}")
     print(f"Total open issues: {len(all_candidates)}")
     print(f"Blocked issues: {sum(1 for c in all_candidates if c['is_blocked'])}")
@@ -528,41 +523,27 @@ def pick_issue(
     print(f"  Rationale:          {matt['rationale']}")
     print(f"\n🚀 Next Steps & Commands:")
     print(f"  {matt['first_step']}")
-    print(f"  Repo directory:     /home/prame/Project/Excited.live-org/{picked['repo'].split('/')[-1]}")
+    code, toplevel, _ = run_command(["git", "rev-parse", "--show-toplevel"])
+    repo_dir = toplevel if code == 0 and toplevel else os.getcwd()
+    print(f"  Repo directory:     {repo_dir}")
     print("=" * 70)
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Pick the next unblocked, unhandled GitHub issue")
-    parser.add_argument("--repo", help="Target repository (e.g. trajectonomics/ledger-core)")
-    parser.add_argument("--org", default="trajectonomics", help="Target organization (default: trajectonomics)")
-    parser.add_argument("--all-org", action="store_true", help="Scan all repositories in the organization")
+    parser = argparse.ArgumentParser(description="Pick the next unblocked, unhandled GitHub issue for the current repository")
+    parser.add_argument("--repo", help="Target repository (e.g. trajectonomics/ledger-core). Defaults to the current repository.")
     parser.add_argument("--active-threads", nargs="*", help="List of active thread titles to consider handled")
     parser.add_argument("--json", action="store_true", help="Output results in JSON format")
 
     args = parser.parse_args()
 
-    repos = []
-    if args.repo:
-        repos = [args.repo]
-    elif args.all_org:
-        repos = get_org_repos(args.org)
-    else:
-        current = get_current_repo()
-        if current and args.org in current:
-            repos = [current]
-        else:
-            repos = get_org_repos(args.org)
-            if not repos:
-                repos = [
-                    f"{args.org}/tax-core",
-                    f"{args.org}/sim-core",
-                    f"{args.org}/ledger-core",
-                    f"{args.org}/cli",
-                ]
+    repo = args.repo or get_current_repo()
+    if not repo:
+        sys.stderr.write("Error: Could not detect GitHub repository from current working directory. Please run inside a git repository with a GitHub remote or pass --repo.\n")
+        sys.exit(1)
 
     active_threads = get_active_t3_threads(args.active_threads)
-    pick_issue(repos, active_threads, output_json=args.json)
+    pick_issue(repo, active_threads, output_json=args.json)
 
 
 if __name__ == "__main__":
