@@ -1,8 +1,9 @@
 /**
- * Every way a ledger input can be rejected. Each code names exactly one rule.
+ * Every way a ledger call can be rejected. Each code names exactly one rule.
  *
- * TODO(#12): adding a code is source-breaking for a consumer that switches exhaustively over this
- * union. How that growth is versioned and communicated is not decided yet.
+ * The set only grows — never widened, re-pointed at another rule, or reused — so switch on it with a
+ * total `default`, or map it with `Partial<Record<LedgerErrorCode, string>>` and a fallback; see
+ * "Error codes" in the README.
  */
 export type LedgerErrorCode =
 	| "SINGLE_POSTING"
