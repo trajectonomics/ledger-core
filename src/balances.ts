@@ -2,6 +2,7 @@ import type { Account } from "./account"
 import type { ChartOfAccounts } from "./chart-map"
 import { byCodeUnit } from "./compare"
 import type { Currency } from "./currency"
+import type { ISODate } from "./date"
 import { parseISODate } from "./date"
 import type { AccountId } from "./ids"
 import { scanLedger } from "./ledger-scan"
@@ -26,19 +27,19 @@ export const compareRows = (
 	byCodeUnit(a.currency, b.currency)
 
 /**
- * Every Leaf Account's Balance up to and including `asOf`, zeros included, sorted. `fieldOf` gives
- * the output path an `AMOUNT_OVERFLOW` reports for a Leaf, so it names the query the caller called.
+ * Every Leaf Account's amount over the Postings `inDate` accepts, zeros included, sorted. `fieldOf`
+ * gives the output path an `AMOUNT_OVERFLOW` reports for a Leaf, so it names the query the caller
+ * called.
  */
-export const leafBalances = (
+export const leafSums = (
 	transactions: readonly Transaction[],
-	asOf: string,
 	chart: ChartOfAccounts,
+	inDate: (date: ISODate) => boolean,
 	fieldOf: (account: Account) => string,
 ): readonly BalanceRow[] => {
-	const cutoff = parseISODate(asOf, "asOf")
 	const sums = new Map<AccountId, bigint>()
 	for (const { account, posting, date } of scanLedger(transactions, chart)) {
-		if (date <= cutoff) sums.set(account.id, (sums.get(account.id) ?? 0n) + BigInt(posting.amount))
+		if (inDate(date)) sums.set(account.id, (sums.get(account.id) ?? 0n) + BigInt(posting.amount))
 	}
 	return Object.freeze(
 		[...chart.values()]
@@ -53,6 +54,20 @@ export const leafBalances = (
 			)
 			.sort(compareRows),
 	)
+}
+
+/**
+ * Every Leaf Account's Balance up to and including `asOf`, zeros included, sorted. `fieldOf` gives
+ * the output path an `AMOUNT_OVERFLOW` reports for a Leaf, so it names the query the caller called.
+ */
+export const leafBalances = (
+	transactions: readonly Transaction[],
+	asOf: string,
+	chart: ChartOfAccounts,
+	fieldOf: (account: Account) => string,
+): readonly BalanceRow[] => {
+	const cutoff = parseISODate(asOf, "asOf")
+	return leafSums(transactions, chart, (date) => date <= cutoff, fieldOf)
 }
 
 /**

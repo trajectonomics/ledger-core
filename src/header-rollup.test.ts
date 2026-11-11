@@ -25,6 +25,7 @@ describe("headerRollup", () => {
 			row("default", "assets", "THB", 4_580_000),
 			row("default", "assets", "USD", 10_000),
 			row("default", "current", "THB", 4_080_000),
+			row("default", "expenses", "THB", 220_000),
 			row("default", "liabilities", "THB", -100_000),
 			row("default", "untouched", "THB", 0),
 			row("other-co", "other-assets", "THB", 0),
