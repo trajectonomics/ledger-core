@@ -6,13 +6,16 @@ import { accountInputs, ledger } from "./queries.fixtures"
  * The golden chart with a deeper hierarchy: `assets` over the USD Header `current` over the THB
  * Leaves `cash` and `savings`, with `broker` beside `current` and `usd-wallet` moved under
  * `assets`; a Credit-normal `liabilities` over `loan`; an `untouched` Header over `dormant` with
- * nothing posted beneath it; and `other-assets` over `other-cash` in the second Entity.
+ * nothing posted beneath it; an `expenses` Header over `food` and `interest`; and `other-assets`
+ * over `other-cash` in the second Entity.
  */
 const reparented = new Map([
 	["cash", "current"],
 	["savings", "current"],
 	["loan", "liabilities"],
 	["usd-wallet", "assets"],
+	["food", "expenses"],
+	["interest", "expenses"],
 	["other-cash", "other-assets"],
 ])
 
@@ -27,6 +30,7 @@ export const nestedAccountInputs: readonly AccountInput[] = [
 	{ id: "liabilities", type: "liability", currency: "THB" },
 	{ id: "untouched", type: "asset", currency: "THB" },
 	{ id: "dormant", type: "asset", currency: "THB", parentId: "untouched" },
+	{ id: "expenses", type: "expense", currency: "THB" },
 	{ id: "other-assets", type: "asset", currency: "THB", entityId: "other-co" },
 ]
 
@@ -52,13 +56,20 @@ export const nestedLedger: readonly Transaction[] = [
 export const headerDescendants: Readonly<Record<string, readonly string[]>> = {
 	assets: ["broker", "cash", "savings", "usd-wallet"],
 	current: ["cash", "savings"],
+	expenses: ["food", "interest"],
 	liabilities: ["loan"],
 	untouched: ["dormant"],
 	"other-assets": ["other-cash"],
 }
 
 /** The Headers with no Header ancestor, and every Leaf one of them covers. Written out by hand. */
-export const rootHeaders: readonly string[] = ["assets", "liabilities", "untouched", "other-assets"]
+export const rootHeaders: readonly string[] = [
+	"assets",
+	"expenses",
+	"liabilities",
+	"untouched",
+	"other-assets",
+]
 
 export const coveredLeaves: readonly string[] = [
 	"broker",
@@ -66,6 +77,8 @@ export const coveredLeaves: readonly string[] = [
 	"savings",
 	"usd-wallet",
 	"loan",
+	"food",
+	"interest",
 	"dormant",
 	"other-cash",
 ]

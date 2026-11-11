@@ -1,6 +1,7 @@
 import { describe, expect, it } from "bun:test"
 import {
 	balances,
+	headerPeriodRollup,
 	headerRollup,
 	netWorth,
 	parseCurrency,
@@ -61,6 +62,7 @@ describe("query results", () => {
 		const results = [
 			{ rows: balances(ledger, asOf, chart) },
 			{ rows: headerRollup(ledger, asOf, chart) },
+			{ rows: headerPeriodRollup(ledger, year, chart) },
 			netWorth(ledger, asOf, chart),
 			trialBalance(ledger, asOf, chart),
 			profitAndLoss(ledger, year, chart),
@@ -82,6 +84,7 @@ describe("query results", () => {
 		const snapshot = JSON.stringify([ledger, [...chart.values()], where])
 		balances(ledger, asOf, chart)
 		headerRollup(ledger, asOf, chart)
+		headerPeriodRollup(ledger, year, chart)
 		netWorth(ledger, asOf, chart)
 		trialBalance(ledger, asOf, chart)
 		profitAndLoss(ledger, { ...year, groupBy: "costCentre", where }, chart)
@@ -90,6 +93,8 @@ describe("query results", () => {
 
 	it("survives a JSON round trip", () => {
 		const rows = headerRollup(ledger, asOf, chart)
+		const periodRows = headerPeriodRollup(ledger, year, chart)
 		expect(JSON.parse(JSON.stringify(rows))).toEqual(rows)
+		expect(JSON.parse(JSON.stringify(periodRows))).toEqual(periodRows)
 	})
 })

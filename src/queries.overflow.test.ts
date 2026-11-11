@@ -4,6 +4,7 @@ import {
 	balance,
 	balances,
 	createChartOfAccounts,
+	headerPeriodRollup,
 	headerRollup,
 	netWorth,
 	profitAndLoss,
@@ -30,6 +31,18 @@ const thrown = (run: () => unknown): { code?: string; field?: string } | undefin
 
 /** The `field` of the error a thunk throws, or undefined. */
 const fieldOf = (run: () => unknown): string | undefined => thrown(run)?.field
+
+/** A chart whose Headers sort before its other Headers, so sorted order decides the reported row. */
+const hierarchyChart = createChartOfAccounts([
+	{ id: "expenses", type: "expense", currency: "THB" },
+	{ id: "food", type: "expense", currency: "THB", parentId: "expenses" },
+	{ id: "interest", type: "expense", currency: "THB", parentId: "expenses" },
+	{ id: "assets", type: "asset", currency: "THB" },
+	{ id: "property", type: "asset", currency: "THB", parentId: "assets" },
+	{ id: "receivables", type: "asset", currency: "THB", parentId: "assets" },
+])
+
+const oneDay = { from: "2024-01-01", to: "2024-01-01" }
 
 describe("overflow", () => {
 	it("accepts a Balance of exactly the safe integer limit", () => {
@@ -116,14 +129,6 @@ describe("overflow", () => {
 	})
 
 	it("reports the first overflowing Header row in sorted order", () => {
-		const nested = createChartOfAccounts([
-			{ id: "expenses", type: "expense", currency: "THB" },
-			{ id: "food", type: "expense", currency: "THB", parentId: "expenses" },
-			{ id: "interest", type: "expense", currency: "THB", parentId: "expenses" },
-			{ id: "assets", type: "asset", currency: "THB" },
-			{ id: "property", type: "asset", currency: "THB", parentId: "assets" },
-			{ id: "receivables", type: "asset", currency: "THB", parentId: "assets" },
-		])
 		const txs = [
 			validateTransaction(
 				{
@@ -136,9 +141,59 @@ describe("overflow", () => {
 						{ accountId: "receivables", amount: -BIG, currency: "THB" },
 					],
 				},
-				nested,
+				hierarchyChart,
 			),
 		]
-		expect(fieldOf(() => headerRollup(txs, "2024-01-01", nested))).toBe("headerRollup[assets/THB]")
+		expect(fieldOf(() => headerRollup(txs, "2024-01-01", hierarchyChart))).toBe(
+			"headerRollup[assets/THB]",
+		)
+		expect(fieldOf(() => headerPeriodRollup(txs, oneDay, hierarchyChart))).toBe(
+			"headerPeriodRollup[assets/THB]",
+		)
+	})
+
+	it("rejects a Header period row that overflows when every Leaf is safe", () => {
+		const txs = [post("a", "cash", "equity", BIG), post("b", "savings", "salary", BIG)]
+		expect(thrown(() => headerPeriodRollup(txs, oneDay, chart))).toMatchObject({
+			code: "AMOUNT_OVERFLOW",
+			field: "headerPeriodRollup[assets/THB]",
+		})
+	})
+
+	it("names the query called for a Leaf it rolls up over a period, covered or not", () => {
+		const covered = [post("a", "cash", "equity", MAX), post("b", "cash", "equity", 1)]
+		expect(fieldOf(() => headerPeriodRollup(covered, oneDay, chart))).toBe(
+			"headerPeriodRollup[cash]",
+		)
+		const uncovered = [post("a", "food", "cash", MAX), post("b", "food", "savings", 1)]
+		expect(fieldOf(() => headerPeriodRollup(uncovered, oneDay, chart))).toBe(
+			"headerPeriodRollup[food]",
+		)
+	})
+
+	it("accepts a Leaf that overflows across the whole ledger but is safe inside the period", () => {
+		const txs = [
+			tx("a", "2024-01-01", [thb("cash", BIG), thb("equity", -BIG)]),
+			tx("b", "2024-02-01", [thb("cash", BIG), thb("equity", -BIG)]),
+		]
+		const february = { from: "2024-02-01", to: "2024-02-28" }
+		expect(thrown(() => headerPeriodRollup(txs, february, chart))).toBeUndefined()
+		expect(
+			codeOf(() => headerPeriodRollup(txs, { from: "2024-01-01", to: "2024-02-28" }, chart)),
+		).toBe("AMOUNT_OVERFLOW")
+	})
+
+	it("rejects an in-period overflow that a later Reversal would offset", () => {
+		const txs = [
+			tx("a", "2024-01-01", [thb("cash", MAX), thb("equity", -MAX)]),
+			tx("b", "2024-01-02", [thb("cash", 1), thb("equity", -1)]),
+			tx("r", "2024-02-10", [thb("cash", -1), thb("equity", 1)]),
+		]
+		expect(
+			thrown(() => headerPeriodRollup(txs, { from: "2024-01-01", to: "2024-12-31" }, chart)),
+		).toBeUndefined()
+		expect(
+			codeOf(() => headerPeriodRollup(txs, { from: "2024-01-01", to: "2024-01-31" }, chart)),
+		).toBe("AMOUNT_OVERFLOW")
 	})
 })
