@@ -52,7 +52,8 @@ const text = messages[error.code] ?? `Rejected (${error.code})`
 ```
 
 While the major version is 0, a caret range such as `^0.1.0` admits patch releases only, so a new
-code arrives only in a minor version you choose to take. The policy never promises a particular bump.
+code arrives only in a minor version you choose to take. From 1.0, a new code arrives in a major
+version.
 
 ## Releasing
 
