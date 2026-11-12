@@ -26,7 +26,7 @@ This record is the answer to #12. It applies from the next code that is added, n
 - **Option D, freezing the set, is rejected.** It contradicts one code per rule (ADR-0001), which is what makes a rejection legible.
 - **The 0.x caret consequence is part of the promise.** A caret range such as `^0.1.0` admits patch releases only while the major version is 0, so a new code arrives only in a minor that the consumer deliberately takes.
 - **The 1.0 question is deferred, not answered, and its deadline is unenforced.** Whether additions stay major after 1.0, and whether B ships, are tracked by #33. That issue replaces #12's "only if a consumer asks" trigger: the question is settled there before 1.0, consumer or not. Nothing enforces the deadline, because cutting 1.0 is a manual dispatch of the Release workflow; #33 is the only prompt.
-- **#33 settled the deferred question: a code added or narrowed after 1.0 is a major, and Option B does not ship.** The policy above is confirmed as written, and the deferral above is answered.
+- **#33 settled the deferred question: a code added or narrowed after 1.0 is a major, and Option B is not shipped now.** The policy above is confirmed as written, and the deferral above is answered.
 
 ## Superseded
 
