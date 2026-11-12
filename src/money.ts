@@ -14,11 +14,11 @@ const convert = (
 	amount: number,
 	currency: string,
 	field: string,
-	to: typeof sharedToMinorUnits,
-) => {
+	conversion: typeof sharedToMinorUnits,
+): number => {
 	const digits = minorUnitDigits(parseCurrency(currency))
 	try {
-		return to(amount, digits, field, signed)
+		return conversion(amount, digits, field, signed)
 	} catch (error) {
 		if (!(error instanceof MoneyValidationError)) throw error
 		throw new LedgerValidationError("INVALID_AMOUNT", error.field, error.value, error.reason)
