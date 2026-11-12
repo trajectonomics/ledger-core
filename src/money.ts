@@ -1,25 +1,41 @@
-import { assertSafeInteger } from "./amount"
+import {
+	MoneyValidationError,
+	fromMinorUnits as sharedFromMinorUnits,
+	toMinorUnits as sharedToMinorUnits,
+} from "@trajectonomics/money"
 import { minorUnitDigits, parseCurrency } from "./currency"
 import { LedgerValidationError } from "./errors"
 
-/**
- * Convert a major-unit amount (`12.34`) to signed integer minor units (`1234`).
- * Rounds half away from zero; `toPrecision` strips binary-float noise first.
- */
-export const toMinorUnits = (majorAmount: number, currency: string): number => {
+// The ledger is signed (Debit +, Credit -), so both conversions accept negative amounts.
+const signed = { allowNegative: true } as const
+
+/** Runs a shared conversion, reporting its rejection as the ledger's `INVALID_AMOUNT`. */
+const convert = (
+	amount: number,
+	currency: string,
+	field: string,
+	conversion: typeof sharedToMinorUnits,
+): number => {
 	const digits = minorUnitDigits(parseCurrency(currency))
-	if (!Number.isFinite(majorAmount)) {
-		throw new LedgerValidationError("INVALID_AMOUNT", "majorAmount", majorAmount, "must be finite")
+	try {
+		return conversion(amount, digits, field, signed)
+	} catch (error) {
+		if (!(error instanceof MoneyValidationError)) throw error
+		throw new LedgerValidationError("INVALID_AMOUNT", error.field, error.value, error.reason)
 	}
-	const raw = Math.abs(majorAmount) * 10 ** digits
-	// Trimming to 15 significant digits removes float noise (1.005 * 100), but beyond 1e15
-	// it would erase real digits, and a double's own spacing there already exceeds the noise.
-	const scaled = raw < 1e15 ? Number(raw.toPrecision(15)) : raw
-	return assertSafeInteger(Math.sign(majorAmount) * Math.round(scaled) + 0, "majorAmount")
 }
 
-/** Convert signed integer minor units (`1234`) to a major-unit amount (`12.34`). */
-export const fromMinorUnits = (minorUnits: number, currency: string): number => {
-	const digits = minorUnitDigits(parseCurrency(currency))
-	return assertSafeInteger(minorUnits, "minorUnits") / 10 ** digits
-}
+/**
+ * Convert a major-unit amount (`12.34`) to signed integer minor units (`1234`).
+ * Delegates to `@trajectonomics/money` with the currency's `Intl`-resolved digits:
+ * exact decimal expansion, rounded half away from zero.
+ */
+export const toMinorUnits = (majorAmount: number, currency: string): number =>
+	convert(majorAmount, currency, "majorAmount", sharedToMinorUnits)
+
+/**
+ * Convert signed integer minor units (`1234`) to a major-unit amount (`12.34`).
+ * Delegates to `@trajectonomics/money` with the currency's `Intl`-resolved digits.
+ */
+export const fromMinorUnits = (minorUnits: number, currency: string): number =>
+	convert(minorUnits, currency, "minorUnits", sharedFromMinorUnits)

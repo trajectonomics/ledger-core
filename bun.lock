@@ -4,6 +4,9 @@
   "workspaces": {
     "": {
       "name": "@trajectonomics/ledger-core",
+      "dependencies": {
+        "@trajectonomics/money": "^0.1.0",
+      },
       "devDependencies": {
         "@arethetypeswrong/cli": "^0.18.5",
         "@biomejs/biome": "2.6.3",
@@ -89,6 +92,8 @@
     "@rolldown/pluginutils": ["@rolldown/pluginutils@1.0.1", "", {}, "sha512-2j9bGt5Jh8hj+vPtgzPtl72j0yRxHAyumoo6TNfAjsLB04UtpSvPbPcDcBMxz7n+9CYB0c1GxQFxYRg2jimqGw=="],
 
     "@sindresorhus/is": ["@sindresorhus/is@4.6.0", "", {}, "sha512-t09vSN3MdfsyCHoFcTRCH/iUtG7OJ0CsjzB8cjAmKc/va/kIgeDI/TxsigdncE/4be734m0cvIYwNaV4i2XqAw=="],
+
+    "@trajectonomics/money": ["@trajectonomics/money@0.1.0", "", {}, "sha512-irhNt1kzBSj/IdwxDSYEuH0zFBcTbIgXDMwGhEjjIZ1hhyEJTfyBVlSEYa6SA9e3ChNQHJUh8RO/pDqa04oJEg=="],
 
     "@trajectonomics/tooling": ["@trajectonomics/tooling@1.1.0", "", {}, "sha512-AqKQYsyPN+EosNtxLUaKipA+ocXl2tEWizJ0eXOtSn+C4Lge82ZXCKDbyPYwdsjMiLknnFWfwGeyhKYPTTAl7g=="],
 
