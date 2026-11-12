@@ -16,8 +16,6 @@ const declaredCodes = (): string[] => {
  * Every declared code, pinned. Adding one to the union without adding it here fails `bun run
  * typecheck`, and so does removing one that is still listed: a code was added or removed, which is
  * `feat!:` today and breaking from 1.0 (ADR-0005).
- *
- * TODO(#33): a runtime `LEDGER_ERROR_CODES` list, if it ships, belongs beside this pin.
  */
 const PINNED_CODES = {
 	SINGLE_POSTING: true,
