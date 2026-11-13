@@ -15,6 +15,10 @@ Instructions for AI coding agents in `trajectonomics/ledger-core` (`@trajectonom
 9. Never use `gemini-3.8-flash` anywhere; use `gemini-4-hydrogen` instead for Antigravity tasks and reviews (and `gemini-4-argon` where configured).
 10. Temporary files and scratch clones: `/tmp` is a shared, nearly full tmpfs. Never use fixed `/tmp` filenames (use `mktemp`, or `--body-file -` for `gh` bodies), and never install `node_modules` or clone scratch repositories under `/tmp`; use `~/.cache/<slug>`.
 
+## Organisation goals
+
+The organisation's goals are in https://github.com/trajectonomics/goals, `GOALS.md`. Read them before proposing a new direction. Only the owner edits that file; never edit it.
+
 ## Owner
 
 Saving the owner's attention is part of the job, so finish a task instead of asking about it.
