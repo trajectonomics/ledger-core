@@ -1,12 +1,8 @@
-import type {
-	AccountSlot,
-	ChartConflictReason,
-	ChartConflicts,
-	TransactionSlot,
-} from "./chart-conflict-report"
+import type { ChartConflictReason, ChartConflicts, UnbalancedSlot } from "./chart-conflict-report"
 import { reportOf } from "./chart-conflict-report"
 import type { ChartOfAccounts } from "./chart-map"
 import { LedgerValidationError } from "./errors"
+import type { AccountId, TransactionId } from "./ids"
 import { assertNewTransactionId } from "./ledger-scan"
 import type { Posting } from "./posting"
 import { validatePosting } from "./posting"
@@ -27,36 +23,39 @@ const reasonOf = (error: LedgerValidationError): ChartConflictReason => {
 	}
 }
 
-interface Rejection {
-	readonly posting: Posting
+/** The Postings of one unreadable `(Account, reason)`, counted as the walk goes. */
+interface AccountSlot {
+	readonly accountId: AccountId
 	readonly reason: ChartConflictReason
+	postings: number
+	readonly transactions: Set<TransactionId>
 }
 
-interface Walk {
-	readonly rejections: readonly Rejection[]
-	readonly readable: readonly Posting[]
-}
-
-/** Check every Posting of one Transaction: a Posting the chart refuses yields its reason. */
-const walk = (transaction: Transaction, chart: ChartOfAccounts): Walk => {
+/** Check every Posting of one Transaction, recording the ones the chart refuses. */
+const walk = (
+	transaction: Transaction,
+	chart: ChartOfAccounts,
+	at: number,
+	accounts: Map<string, AccountSlot>,
+): readonly Posting[] => {
 	const readable: Posting[] = []
-	const rejections: Rejection[] = []
-	for (const posting of transaction.postings) {
+	transaction.postings.forEach((posting, index) => {
 		try {
-			readable.push(validatePosting(posting, chart, "postings"))
+			readable.push(validatePosting(posting, chart, `transactions[${at}].postings[${index}]`))
 		} catch (error) {
 			if (!(error instanceof LedgerValidationError)) throw error
-			rejections.push({ posting, reason: reasonOf(error) })
+			record(accounts, transaction, posting, reasonOf(error))
 		}
-	}
-	return { rejections, readable }
+	})
+	return readable
 }
 
 /** Record one rejected Posting under `(accountId, reason)`, counting Postings and Transactions. */
 const record = (
 	accounts: Map<string, AccountSlot>,
 	transaction: Transaction,
-	{ posting, reason }: Rejection,
+	posting: Posting,
+	reason: ChartConflictReason,
 ): void => {
 	const key = JSON.stringify([posting.accountId, reason])
 	const slot = accounts.get(key)
@@ -84,11 +83,10 @@ export const chartConflicts = (
 ): ChartConflicts => {
 	const seen = new Set<string>()
 	const accounts = new Map<string, AccountSlot>()
-	const unbalanced: TransactionSlot[] = []
+	const unbalanced: UnbalancedSlot[] = []
 	transactions.forEach((transaction, index) => {
 		assertNewTransactionId(seen, transaction, index)
-		const { rejections, readable } = walk(transaction, chart)
-		for (const rejection of rejections) record(accounts, transaction, rejection)
+		const readable = walk(transaction, chart, index, accounts)
 		if (readable.length !== transaction.postings.length) return
 		for (const group of unbalancedGroups(readable, chart)) {
 			unbalanced.push({ transactionId: transaction.id, ...group })

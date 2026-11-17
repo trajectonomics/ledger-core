@@ -31,16 +31,16 @@ export interface ChartConflicts {
 	readonly transactions: readonly ChartConflictTransactionRow[]
 }
 
-/** The Postings of one unreadable `(Account, reason)` pair, and the Transactions they belong to. */
-export interface AccountSlot {
+/** What the walk counted for one unreadable `(Account, reason)`, as the report reads it. */
+export interface AccountTally {
 	readonly accountId: AccountId
 	readonly reason: ChartConflictReason
-	postings: number
-	readonly transactions: Set<TransactionId>
+	readonly postings: number
+	readonly transactions: ReadonlySet<TransactionId>
 }
 
 /** One Transaction the chart leaves unbalanced, with its residual before it is narrowed. */
-export interface TransactionSlot {
+export interface UnbalancedSlot {
 	readonly transactionId: TransactionId
 	readonly entityId: string
 	readonly currency: Currency
@@ -53,8 +53,8 @@ export interface TransactionSlot {
  * Residuals are narrowed after sorting, so an `AMOUNT_OVERFLOW` does not depend on hash order.
  */
 export const reportOf = (
-	accounts: Iterable<AccountSlot>,
-	transactions: readonly TransactionSlot[],
+	accounts: Iterable<AccountTally>,
+	transactions: readonly UnbalancedSlot[],
 ): ChartConflicts => {
 	const accountRows = Object.freeze(
 		[...accounts]

@@ -112,7 +112,7 @@ describe("query results", () => {
 	})
 })
 
-describe("chartConflicts", () => {
+describe("a chart conflict report", () => {
 	const subdivided = createChartOfAccounts([
 		...accountInputs,
 		{ id: "cash-petty", type: "asset", currency: "THB", parentId: "cash" },

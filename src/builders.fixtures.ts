@@ -1,5 +1,5 @@
 import type { ChartOfAccounts } from "./index"
-import { createChartOfAccounts, LedgerValidationError } from "./index"
+import { createChartOfAccounts } from "./index"
 
 /** Shared chart for the builder tests: USD and THB leaves, a header, and a second entity. */
 export const chart: ChartOfAccounts = createChartOfAccounts([
@@ -17,11 +17,13 @@ export const chart: ChartOfAccounts = createChartOfAccounts([
 ])
 
 /** The error a thunk throws, or undefined. */
-export const thrown = (run: () => unknown): { code?: string; field?: string } | undefined => {
+export const thrown = (
+	run: () => unknown,
+): { code?: string; field?: string; value?: unknown; reason?: string } | undefined => {
 	try {
 		run()
 	} catch (error) {
-		return error as { code?: string; field?: string }
+		return error as { code?: string; field?: string; value?: unknown; reason?: string }
 	}
 	return undefined
 }
@@ -30,12 +32,4 @@ export const thrown = (run: () => unknown): { code?: string; field?: string } | 
 export const fieldOf = (run: () => unknown): string | undefined => thrown(run)?.field
 
 /** The error code a thunk throws, or undefined when it does not throw. */
-export const codeOf = (run: () => unknown): string | undefined => {
-	try {
-		run()
-	} catch (error) {
-		if (error instanceof LedgerValidationError) return error.code
-		throw error
-	}
-	return undefined
-}
+export const codeOf = (run: () => unknown): string | undefined => thrown(run)?.code

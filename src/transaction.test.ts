@@ -1,4 +1,5 @@
 import { describe, expect, it } from "bun:test"
+import { thrown } from "./builders.fixtures"
 import {
 	type AccountInput,
 	createChartOfAccounts,
@@ -92,6 +93,15 @@ describe("validateTransaction rejects", () => {
 	})
 	it("transactions balanced only across currencies", () => {
 		expect(codeOf(tx([p("cash", 5), p("baht", -5, "THB")]))).toBe("UNBALANCED_TRANSACTION")
+	})
+	it("names the first unbalanced Entity and Currency, with the residual", () => {
+		const pair = tx([p("cash", 5), p("other", -5)])
+		expect(thrown(() => validateTransaction(pair, chart))).toMatchObject({
+			code: "UNBALANCED_TRANSACTION",
+			field: "postings",
+			value: "5",
+			reason: 'entity "default" USD sums to 5 instead of 0',
+		})
 	})
 	it("malformed and non-existent calendar dates", () => {
 		for (const date of ["2026-02-30", "2026-13-01", "2026-1-01", "20260301", "", "2025-02-29"]) {

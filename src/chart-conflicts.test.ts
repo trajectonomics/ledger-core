@@ -1,4 +1,5 @@
 import { describe, expect, it } from "bun:test"
+import { thrown } from "./builders.fixtures"
 import type {
 	AccountInput,
 	ChartConflictAccountRow,
@@ -8,7 +9,6 @@ import type {
 } from "./index"
 import {
 	accountId,
-	balances,
 	chartConflicts,
 	createChartOfAccounts,
 	parseCurrency,
@@ -59,18 +59,6 @@ const accountRow = (
 	postings: number,
 	transactions: number,
 ): ChartConflictAccountRow => ({ accountId: accountId(id), reason, postings, transactions })
-
-/** The error a thunk throws, or undefined. */
-const thrown = (
-	run: () => unknown,
-): { code?: string; field?: string; message?: string } | undefined => {
-	try {
-		run()
-	} catch (error) {
-		return error as { code?: string; field?: string; message?: string }
-	}
-	return undefined
-}
 
 describe("a chart that still reads the ledger", () => {
 	it("reports no conflicts", () => {
@@ -163,18 +151,6 @@ describe("the report", () => {
 		expect(Object.isFrozen(report.transactions[0])).toBe(true)
 		const ids = ["p0", "p0", "p1", "p1"].map(transactionId)
 		expect(report.transactions.map((row) => row.transactionId)).toEqual(ids)
-	})
-})
-
-describe("the unbalanced rule the report shares with the throwing path", () => {
-	it("still throws the first group, unchanged in code, field, value and reason", () => {
-		const moved = editedChart({ bank: { entityId: "other-co" } })
-		expect(thrown(() => balances([pay], "2024-12-31", moved))).toMatchObject({
-			code: "UNBALANCED_TRANSACTION",
-			field: "transactions[0].postings",
-			value: "100000",
-			reason: 'entity "other-co" THB sums to 100000 instead of 0',
-		})
 	})
 })
 

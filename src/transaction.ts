@@ -37,7 +37,8 @@ export interface UnbalancedGroup {
 
 /**
  * Group Postings by the Entity their Account belongs to and their Currency, keeping the groups that
- * do not net to zero, in first-seen order. The `(Entity, Currency)` assignment is read from `chart`.
+ * do not net to zero, in first-seen order. Every Posting's Account must be present in `chart`: the
+ * Entity is read from it, and callers pass Postings that `validatePosting` just accepted.
  */
 export const unbalancedGroups = (
 	postings: readonly Posting[],

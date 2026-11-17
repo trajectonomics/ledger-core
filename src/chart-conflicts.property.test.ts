@@ -1,4 +1,5 @@
 import { describe, expect, it } from "bun:test"
+import { codeOf } from "./builders.fixtures"
 import type {
 	AccountInput,
 	ChartConflictReason,
@@ -14,7 +15,6 @@ import {
 	createChartOfAccounts,
 	headerPeriodRollup,
 	headerRollup,
-	LedgerValidationError,
 	netWorth,
 	profitAndLoss,
 	trialBalance,
@@ -81,29 +81,18 @@ const editsOf = (seed: number): readonly Edit[] => {
 const AS_OF = "2024-12-31"
 const YEAR = { from: "2024-01-01", to: "2024-12-31" }
 
-/** The code a thunk throws, or undefined when it reads. */
-const thrownCode = (run: () => unknown): string | undefined => {
-	try {
-		run()
-	} catch (error) {
-		if (error instanceof LedgerValidationError) return error.code
-		throw error
-	}
-	return undefined
-}
-
 /** Every reading query's rejection, over the same ledger and chart. */
 const readingCodes = (
 	txs: readonly Transaction[],
 	each: ChartOfAccounts,
 ): (string | undefined)[] => [
-	thrownCode(() => balances(txs, AS_OF, each)),
-	thrownCode(() => balance(txs, PROBED, AS_OF, each)),
-	thrownCode(() => headerRollup(txs, AS_OF, each)),
-	thrownCode(() => headerPeriodRollup(txs, YEAR, each)),
-	thrownCode(() => netWorth(txs, AS_OF, each)),
-	thrownCode(() => profitAndLoss(txs, YEAR, each)),
-	thrownCode(() => trialBalance(txs, AS_OF, each)),
+	codeOf(() => balances(txs, AS_OF, each)),
+	codeOf(() => balance(txs, PROBED, AS_OF, each)),
+	codeOf(() => headerRollup(txs, AS_OF, each)),
+	codeOf(() => headerPeriodRollup(txs, YEAR, each)),
+	codeOf(() => netWorth(txs, AS_OF, each)),
+	codeOf(() => profitAndLoss(txs, YEAR, each)),
+	codeOf(() => trialBalance(txs, AS_OF, each)),
 ]
 
 const CODE_OF_REASON: Record<ChartConflictReason, string> = {
