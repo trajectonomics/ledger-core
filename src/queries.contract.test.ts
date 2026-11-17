@@ -6,6 +6,7 @@ import {
 	netWorth,
 	parseCurrency,
 	profitAndLoss,
+	statement,
 	trialBalance,
 } from "./index"
 import { bal, chart, ledger, thb, tot, tx } from "./queries.fixtures"
@@ -67,6 +68,7 @@ describe("query results", () => {
 			trialBalance(ledger, asOf, chart),
 			profitAndLoss(ledger, year, chart),
 			profitAndLoss(ledger, { ...year, groupBy: "costCentre" }, chart),
+			statement(ledger, "cash", year, chart),
 		]
 		for (const result of results) {
 			expect(Object.isFrozen(result.rows)).toBe(true)
@@ -77,6 +79,7 @@ describe("query results", () => {
 				expect(Object.isFrozen(result.totals[0])).toBe(true)
 			}
 		}
+		expect(Object.isFrozen(statement(ledger, "cash", year, chart))).toBe(true)
 	})
 
 	it("never mutates its inputs", () => {
@@ -88,6 +91,7 @@ describe("query results", () => {
 		netWorth(ledger, asOf, chart)
 		trialBalance(ledger, asOf, chart)
 		profitAndLoss(ledger, { ...year, groupBy: "costCentre", where }, chart)
+		statement(ledger, "cash", year, chart)
 		expect(JSON.stringify([ledger, [...chart.values()], where])).toBe(snapshot)
 	})
 
@@ -96,5 +100,7 @@ describe("query results", () => {
 		const periodRows = headerPeriodRollup(ledger, year, chart)
 		expect(JSON.parse(JSON.stringify(rows))).toEqual(rows)
 		expect(JSON.parse(JSON.stringify(periodRows))).toEqual(periodRows)
+		const cashStatement = statement(ledger, "cash", year, chart)
+		expect(JSON.parse(JSON.stringify(cashStatement))).toEqual(cashStatement)
 	})
 })
