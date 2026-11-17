@@ -2,15 +2,17 @@ import type { Account } from "./account"
 import type { ChartOfAccounts } from "./chart-map"
 import type { ISODate } from "./date"
 import { LedgerValidationError } from "./errors"
+import type { TransactionId } from "./ids"
 import type { Posting } from "./posting"
 import type { Transaction } from "./transaction"
 import { validateTransaction } from "./transaction"
 
-/** A Posting with the Account it targets and the date of its Transaction. */
+/** A Posting with the Account it targets and the date and id of its Transaction. */
 export interface ScannedPosting {
 	readonly account: Account
 	readonly posting: Posting
 	readonly date: ISODate
+	readonly transactionId: TransactionId
 }
 
 const recheck = (tx: Transaction, index: number, chart: ChartOfAccounts): Transaction => {
@@ -51,6 +53,7 @@ export const scanLedger = (
 			account: chart.get(posting.accountId)!,
 			posting,
 			date: checked.date,
+			transactionId: checked.id,
 		}))
 	})
 }
