@@ -11,7 +11,7 @@ import {
 	trialBalance,
 	validateTransaction,
 } from "./index"
-import { chart } from "./queries.fixtures"
+import { chart, fieldOf, thrown } from "./queries.fixtures"
 import {
 	BIG,
 	cumulativeOverflow,
@@ -167,7 +167,7 @@ describe("overflow", () => {
 		)
 	})
 
-	it("names movements and the Account for a movement row that overflows", () => {
+	it("names the query called and the Account for an overflowing movement row", () => {
 		const txs = [post("a", "cash", "equity", MAX), post("b", "cash", "equity", 1)]
 		expect(thrown(() => movements(txs, oneDay, chart))).toMatchObject({
 			code: "AMOUNT_OVERFLOW",

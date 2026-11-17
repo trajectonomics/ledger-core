@@ -107,7 +107,7 @@ describe("query properties", () => {
 		}
 	})
 
-	it("movements sum to zero per Entity and Currency", () => {
+	it("Leaf Period Movements sum to zero per Entity and Currency", () => {
 		const period = { from: "2024-01-01", to: "2024-03-31" }
 		for (const seed of seeds) {
 			for (const [pair, sum] of sumByPair(movements(ledgerOf(seed), period, chart))) {

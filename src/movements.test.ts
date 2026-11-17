@@ -1,22 +1,12 @@
 import { describe, expect, it } from "bun:test"
 import { nestedChart, nestedLedger } from "./header-rollup.fixtures"
 import { createChartOfAccounts, movements, reverse, type Transaction } from "./index"
-import { accountInputs, bal, chart, ledger, thb, tx } from "./queries.fixtures"
+import { accountInputs, bal, chart, ledger, thb, thrown, tx } from "./queries.fixtures"
 
 const row = bal
 
 /** February 2024: `t4`, `t5`, `t6`, `t7` and `b1`, and none of January's postings. */
 const february = { from: "2024-02-01", to: "2024-02-28" }
-
-/** The error a thunk throws, or undefined. */
-const errorOf = (run: () => unknown): { code?: string; field?: string } | undefined => {
-	try {
-		run()
-	} catch (error) {
-		return error as { code?: string; field?: string }
-	}
-	return undefined
-}
 
 const amountOf = (
 	account: string,
@@ -99,32 +89,28 @@ describe("movements", () => {
 
 	it("rejects an inverted period with INVALID_PERIOD on options.from", () => {
 		expect(
-			errorOf(() => movements(ledger, { from: "2024-03-01", to: "2024-02-01" }, chart)),
+			thrown(() => movements(ledger, { from: "2024-03-01", to: "2024-02-01" }, chart)),
 		).toMatchObject({ code: "INVALID_PERIOD", field: "options.from" })
 	})
 
 	it("rejects an unreal date with INVALID_DATE", () => {
 		expect(
-			errorOf(() => movements(ledger, { from: "2024-02-30", to: "2024-03-01" }, chart))?.code,
+			thrown(() => movements(ledger, { from: "2024-02-30", to: "2024-03-01" }, chart))?.code,
 		).toBe("INVALID_DATE")
 		expect(
-			errorOf(() => movements(ledger, { from: "2024-02-01", to: "2024-13-01" }, chart))?.code,
+			thrown(() => movements(ledger, { from: "2024-02-01", to: "2024-13-01" }, chart))?.code,
 		).toBe("INVALID_DATE")
 	})
 
 	it("parses the period before it scans the ledger", () => {
 		const without = createChartOfAccounts(accountInputs.filter((a) => a.id !== "food"))
-		const error = errorOf(() =>
-			movements(ledger, { from: "2024-03-01", to: "2024-02-01" }, without),
-		)
+		const error = thrown(() => movements(ledger, { from: "2024-03-01", to: "2024-02-01" }, without))
 		expect(error?.code).toBe("INVALID_PERIOD")
 	})
 
 	it("re-checks Transactions dated outside the period, mirroring the caller's input path", () => {
 		const without = createChartOfAccounts(accountInputs.filter((a) => a.id !== "food"))
-		const error = errorOf(() =>
-			movements(ledger, { from: "2024-01-01", to: "2024-01-01" }, without),
-		)
+		const error = thrown(() => movements(ledger, { from: "2024-01-01", to: "2024-01-01" }, without))
 		expect(error?.code).toBe("UNKNOWN_ACCOUNT")
 		expect(error?.field).toBe("transactions[3].postings[0].accountId")
 	})

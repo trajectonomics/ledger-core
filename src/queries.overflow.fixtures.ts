@@ -14,18 +14,7 @@ export const post = (
 	dims = {},
 ): Transaction => tx(id, "2024-01-01", [thb(debit, amount, dims), thb(credit, -amount)])
 
-/** The error a thunk throws, or undefined. */
-export const thrown = (run: () => unknown): { code?: string; field?: string } | undefined => {
-	try {
-		run()
-	} catch (error) {
-		return error as { code?: string; field?: string }
-	}
-	return undefined
-}
-
-/** The `field` of the error a thunk throws, or undefined. */
-export const fieldOf = (run: () => unknown): string | undefined => thrown(run)?.field
+export { fieldOf, thrown } from "./queries.fixtures"
 
 /** A chart whose Headers sort before its other Headers, so sorted order decides the reported row. */
 export const hierarchyChart: ChartOfAccounts = createChartOfAccounts([
