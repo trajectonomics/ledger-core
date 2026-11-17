@@ -1,5 +1,6 @@
 import { describe, expect, it } from "bun:test"
 import {
+	accountId,
 	balances,
 	chartConflicts,
 	createChartOfAccounts,
@@ -11,6 +12,7 @@ import {
 	profitAndLoss,
 	statement,
 	trialBalance,
+	validateTransaction,
 } from "./index"
 import { accountInputs, bal, chart, ledger, thb, tot, tx } from "./queries.fixtures"
 
@@ -125,5 +127,21 @@ describe("a chart conflict report", () => {
 		expect(Object.isFrozen(report.accounts)).toBe(true)
 		expect(Object.isFrozen(report.accounts[0])).toBe(true)
 		expect(JSON.parse(JSON.stringify(report))).toEqual(report)
+	})
+
+	it("sorts rows by code unit, not by the order the ledger was walked", () => {
+		const leaves = createChartOfAccounts([
+			{ id: "zebra", type: "asset", currency: "THB" },
+			{ id: "apex", type: "asset", currency: "THB" },
+		])
+		const entry = validateTransaction(
+			{ id: "z1", date: "2024-01-01", postings: [thb("zebra", 1), thb("apex", -1)] },
+			leaves,
+		)
+		const report = chartConflicts([entry], createChartOfAccounts([]))
+		expect(report.accounts.map((row) => row.accountId)).toEqual([
+			accountId("apex"),
+			accountId("zebra"),
+		])
 	})
 })
