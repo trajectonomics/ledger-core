@@ -19,8 +19,8 @@ import {
 	profitAndLoss,
 	trialBalance,
 } from "./index"
-import { ledgerOf, pick, rng, shuffled } from "./property.fixtures"
 import { accountInputs, chart } from "./queries.fixtures"
+import { ledgerOf, pick, rng, shuffled } from "./queries.property.fixtures"
 
 /** A posted Account as the golden chart has it, for the type, Currency and Entity an edit copies. */
 const accountOf = (id: string) => chart.get(accountId(id))!

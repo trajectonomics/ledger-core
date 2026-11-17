@@ -5,7 +5,7 @@ import {
 	type PostingInput,
 	validateTransaction,
 } from "./index"
-import { rng } from "./property.fixtures"
+import { rng } from "./queries.property.fixtures"
 
 /** Two entities share USD; a third entity holds THB. Each group balances independently. */
 const groups = [

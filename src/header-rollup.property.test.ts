@@ -7,8 +7,8 @@ import {
 } from "./header-rollup.fixtures"
 import type { BalanceRow, Posting, PostingInput, Transaction } from "./index"
 import { balances, headerPeriodRollup, headerRollup } from "./index"
-import { rng } from "./property.fixtures"
 import { tx } from "./queries.fixtures"
+import { rng } from "./queries.property.fixtures"
 
 /** Accounts that can balance each other: same Entity and Currency. */
 const groups = [

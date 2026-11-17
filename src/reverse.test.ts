@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test"
 import { chart, codeOf } from "./builders.fixtures"
 import { compound, reverse, simple, type Transaction } from "./index"
-import { rng } from "./property.fixtures"
+import { rng } from "./queries.property.fixtures"
 
 const ids = ["cash", "bank", "rent", "interest", "principal", "revenue", "tax-payable", "equity"]
 const pick = (next: () => number): string => ids[Math.floor(next() * ids.length)]!
