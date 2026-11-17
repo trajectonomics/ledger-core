@@ -1,5 +1,5 @@
 import type { ChartOfAccounts } from "./index"
-import { createChartOfAccounts } from "./index"
+import { createChartOfAccounts, LedgerValidationError } from "./index"
 
 /** Shared chart for the builder tests: USD and THB leaves, a header, and a second entity. */
 export const chart: ChartOfAccounts = createChartOfAccounts([
@@ -16,14 +16,13 @@ export const chart: ChartOfAccounts = createChartOfAccounts([
 	{ id: "other-cash", type: "asset", currency: "USD", entityId: "other-co" },
 ])
 
-/** The error a thunk throws, or undefined. */
-export const thrown = (
-	run: () => unknown,
-): { code?: string; field?: string; value?: unknown; reason?: string } | undefined => {
+/** The validation error a thunk throws, or undefined when it does not throw. */
+export const thrown = (run: () => unknown): LedgerValidationError | undefined => {
 	try {
 		run()
 	} catch (error) {
-		return error as { code?: string; field?: string; value?: unknown; reason?: string }
+		if (!(error instanceof LedgerValidationError)) throw error
+		return error
 	}
 	return undefined
 }

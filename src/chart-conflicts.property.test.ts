@@ -20,7 +20,7 @@ import {
 	trialBalance,
 } from "./index"
 import { accountInputs, chart } from "./queries.fixtures"
-import { ledgerOf, pick, rng, shuffled } from "./queries.property.fixtures"
+import { ledgerOf, pick, rng, seeds, shuffled } from "./queries.property.fixtures"
 
 /** A posted Account as the golden chart has it, for the type, Currency and Entity an edit copies. */
 const accountOf = (id: string) => chart.get(accountId(id))!
@@ -115,8 +115,6 @@ const expectMapped = (txs: readonly Transaction[], each: ChartOfAccounts, label:
 		if (code !== undefined) expect(represented, `${label} ${code}`).toContain(code)
 	}
 }
-
-const seeds = Array.from({ length: 100 }, (_, i) => i + 1)
 
 describe("chart conflict properties", () => {
 	it("is empty exactly when every reading query reads the same ledger", () => {
