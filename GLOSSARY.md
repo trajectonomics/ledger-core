@@ -29,6 +29,7 @@ Domain vocabulary for `ledger-core`.
 - **Amendment**: A Reversal paired with the Replacement Transaction that carries the corrected figures. The original stays, so the ledger shows what was recorded, what withdrew it, and what replaced it. _Avoid_: edit, update.
 - **Opening Balance**: The balance an Account starts the ledger with, posted against an Equity Account so the ledger still sums to zero. _Avoid_: initial amount.
 - **Balance**: The accumulated sum of Postings for an Account up to and including a date, as a signed amount (Debit positive, Credit negative), whatever the Account Type.
+- **Statement**: One Leaf Account's Postings over an inclusive period, in date order, each with the running Balance after it, together with the Balance before the period. _Avoid_: ledger, register, activity.
 - **Net Worth**: Total Assets minus total Liabilities up to and including a date, per Entity and Currency, shown as a positive number when assets exceed liabilities. Equity is not part of it.
 - **P&L (Profit and Loss)**: Income minus Expenses over an inclusive period, per Entity and Currency, shown as a positive number when income exceeds expenses.
 - **Trial Balance**: Every Leaf Account's Balance at a date, each placed in the Debit column if positive and the Credit column if negative, with column totals per Entity and Currency. The two totals always match.
