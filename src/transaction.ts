@@ -1,5 +1,6 @@
 import type { Brand } from "./brand"
 import type { ChartOfAccounts } from "./chart-map"
+import type { Currency } from "./currency"
 import type { ISODate } from "./date"
 import { parseISODate } from "./date"
 import { LedgerValidationError } from "./errors"
@@ -27,22 +28,43 @@ export type Transaction = Brand<
 	"Transaction"
 >
 
-const assertBalanced = (postings: readonly Posting[], chart: ChartOfAccounts): void => {
+/** One `(Entity, Currency)` group whose Postings do not sum to zero. */
+export interface UnbalancedGroup {
+	readonly entityId: string
+	readonly currency: Currency
+	readonly sum: bigint
+}
+
+/**
+ * Group Postings by the Entity their Account belongs to and their Currency, keeping the groups that
+ * do not net to zero, in first-seen order. The `(Entity, Currency)` assignment is read from `chart`.
+ */
+export const unbalancedGroups = (
+	postings: readonly Posting[],
+	chart: ChartOfAccounts,
+): readonly UnbalancedGroup[] => {
 	const sums = new Map<string, bigint>()
 	for (const { accountId, amount, currency } of postings) {
 		const key = JSON.stringify([chart.get(accountId)?.entityId, currency])
 		sums.set(key, (sums.get(key) ?? 0n) + BigInt(amount))
 	}
-	for (const [key, sum] of sums) {
-		if (sum !== 0n) {
-			const [entity, currency] = JSON.parse(key) as [string, string]
-			throw new LedgerValidationError(
-				"UNBALANCED_TRANSACTION",
-				"postings",
-				sum.toString(),
-				`entity "${entity}" ${currency} sums to ${sum} instead of 0`,
-			)
-		}
+	return [...sums]
+		.filter(([, sum]) => sum !== 0n)
+		.map(([key, sum]) => {
+			const [entityId, currency] = JSON.parse(key) as [string, Currency]
+			return { entityId, currency, sum }
+		})
+}
+
+const assertBalanced = (postings: readonly Posting[], chart: ChartOfAccounts): void => {
+	const unbalanced = unbalancedGroups(postings, chart)[0]
+	if (unbalanced) {
+		throw new LedgerValidationError(
+			"UNBALANCED_TRANSACTION",
+			"postings",
+			unbalanced.sum.toString(),
+			`entity "${unbalanced.entityId}" ${unbalanced.currency} sums to ${unbalanced.sum} instead of 0`,
+		)
 	}
 }
 
