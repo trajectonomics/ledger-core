@@ -1,6 +1,6 @@
 # @trajectonomics/ledger
 
-Pure double-entry ledger domain: accounts, balanced postings, balances, header rollups, net worth, P&L. No I/O.
+Pure double-entry ledger domain: accounts, balanced postings, balances, header rollups, chart conflicts, net worth, P&L. No I/O.
 
 ## Agent Skills
 
