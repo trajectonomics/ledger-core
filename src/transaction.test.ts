@@ -1,4 +1,5 @@
 import { describe, expect, it } from "bun:test"
+import { thrown } from "./builders.fixtures"
 import {
 	type AccountInput,
 	createChartOfAccounts,
@@ -31,15 +32,8 @@ const tx = (
 	postings,
 	...extra,
 })
-const codeOf = (input: Parameters<typeof validateTransaction>[0]): string | undefined => {
-	try {
-		validateTransaction(input, chart)
-	} catch (error) {
-		if (error instanceof LedgerValidationError) return error.code
-		throw error
-	}
-	return undefined
-}
+const codeOf = (input: Parameters<typeof validateTransaction>[0]): string | undefined =>
+	thrown(() => validateTransaction(input, chart))?.code
 
 describe("validateTransaction accepts", () => {
 	it("a balanced debit/credit pair and returns it", () => {
@@ -92,6 +86,15 @@ describe("validateTransaction rejects", () => {
 	})
 	it("transactions balanced only across currencies", () => {
 		expect(codeOf(tx([p("cash", 5), p("baht", -5, "THB")]))).toBe("UNBALANCED_TRANSACTION")
+	})
+	it("names the first unbalanced Entity and Currency, with the residual", () => {
+		const pair = tx([p("cash", 5), p("other", -5)])
+		expect(thrown(() => validateTransaction(pair, chart))).toMatchObject({
+			code: "UNBALANCED_TRANSACTION",
+			field: "postings",
+			value: "5",
+			reason: 'entity "default" USD sums to 5 instead of 0',
+		})
 	})
 	it("malformed and non-existent calendar dates", () => {
 		for (const date of ["2026-02-30", "2026-13-01", "2026-1-01", "20260301", "", "2025-02-29"]) {
@@ -163,14 +166,8 @@ describe("unforgeable Transaction brand", () => {
 })
 
 describe("error field paths and rule precedence", () => {
-	const fieldOf = (input: Parameters<typeof validateTransaction>[0]): string | undefined => {
-		try {
-			validateTransaction(input, chart)
-		} catch (error) {
-			return (error as LedgerValidationError).field
-		}
-		return undefined
-	}
+	const fieldOf = (input: Parameters<typeof validateTransaction>[0]): string | undefined =>
+		thrown(() => validateTransaction(input, chart))?.field
 	it("points at the offending posting and property", () => {
 		expect(fieldOf(tx([p("rent", 5), p("cash", 0)]))).toBe("postings[1].amount")
 		expect(fieldOf(tx([p("rent", 5), p("assets", -5)]))).toBe("postings[1].accountId")

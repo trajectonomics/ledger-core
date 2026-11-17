@@ -1,6 +1,9 @@
 import { describe, expect, it } from "bun:test"
 import {
+	accountId,
 	balances,
+	chartConflicts,
+	createChartOfAccounts,
 	headerPeriodRollup,
 	headerRollup,
 	movements,
@@ -9,8 +12,9 @@ import {
 	profitAndLoss,
 	statement,
 	trialBalance,
+	validateTransaction,
 } from "./index"
-import { bal, chart, ledger, thb, tot, tx } from "./queries.fixtures"
+import { accountInputs, bal, chart, ledger, thb, tot, tx } from "./queries.fixtures"
 
 const trialTotal = (entityId: string, currency: string, debit: number, credit: number) => ({
 	entityId,
@@ -107,5 +111,37 @@ describe("query results", () => {
 		expect(JSON.parse(JSON.stringify(movementRows))).toEqual(movementRows)
 		const cashStatement = statement(ledger, "cash", year, chart)
 		expect(JSON.parse(JSON.stringify(cashStatement))).toEqual(cashStatement)
+	})
+})
+
+describe("a chart conflict report", () => {
+	const subdivided = createChartOfAccounts([
+		...accountInputs,
+		{ id: "cash-petty", type: "asset", currency: "THB", parentId: "cash" },
+	])
+
+	it("returns a frozen report of plain rows that survives a JSON round trip", () => {
+		const report = chartConflicts(ledger, subdivided)
+		expect(report.accounts.length).toBeGreaterThan(0)
+		expect(Object.isFrozen(report)).toBe(true)
+		expect(Object.isFrozen(report.accounts)).toBe(true)
+		expect(Object.isFrozen(report.accounts[0])).toBe(true)
+		expect(JSON.parse(JSON.stringify(report))).toEqual(report)
+	})
+
+	it("sorts rows by code unit, not by the order the ledger was walked", () => {
+		const leaves = createChartOfAccounts([
+			{ id: "zebra", type: "asset", currency: "THB" },
+			{ id: "apex", type: "asset", currency: "THB" },
+		])
+		const entry = validateTransaction(
+			{ id: "z1", date: "2024-01-01", postings: [thb("zebra", 1), thb("apex", -1)] },
+			leaves,
+		)
+		const report = chartConflicts([entry], createChartOfAccounts([]))
+		expect(report.accounts.map((row) => row.accountId)).toEqual([
+			accountId("apex"),
+			accountId("zebra"),
+		])
 	})
 })

@@ -16,12 +16,13 @@ export const chart: ChartOfAccounts = createChartOfAccounts([
 	{ id: "other-cash", type: "asset", currency: "USD", entityId: "other-co" },
 ])
 
-/** The error a thunk throws, or undefined. */
-export const thrown = (run: () => unknown): { code?: string; field?: string } | undefined => {
+/** The validation error a thunk throws, or undefined when it does not throw. */
+export const thrown = (run: () => unknown): LedgerValidationError | undefined => {
 	try {
 		run()
 	} catch (error) {
-		return error as { code?: string; field?: string }
+		if (!(error instanceof LedgerValidationError)) throw error
+		return error
 	}
 	return undefined
 }
@@ -30,12 +31,4 @@ export const thrown = (run: () => unknown): { code?: string; field?: string } | 
 export const fieldOf = (run: () => unknown): string | undefined => thrown(run)?.field
 
 /** The error code a thunk throws, or undefined when it does not throw. */
-export const codeOf = (run: () => unknown): string | undefined => {
-	try {
-		run()
-	} catch (error) {
-		if (error instanceof LedgerValidationError) return error.code
-		throw error
-	}
-	return undefined
-}
+export const codeOf = (run: () => unknown): string | undefined => thrown(run)?.code

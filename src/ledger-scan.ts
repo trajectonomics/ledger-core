@@ -30,6 +30,26 @@ const recheck = (tx: Transaction, index: number, chart: ChartOfAccounts): Transa
 }
 
 /**
+ * Throw `DUPLICATE_TRANSACTION_ID` when an earlier Transaction already used this id, and record it
+ * otherwise. Shared with `chartConflicts`, so neither reads a ledger twice that the other refuses.
+ */
+export const assertNewTransactionId = (
+	seen: Set<string>,
+	transaction: Transaction,
+	index: number,
+): void => {
+	if (seen.has(transaction.id)) {
+		throw new LedgerValidationError(
+			"DUPLICATE_TRANSACTION_ID",
+			`transactions[${index}].id`,
+			transaction.id,
+			"is used by an earlier transaction",
+		)
+	}
+	seen.add(transaction.id)
+}
+
+/**
  * Re-check every Transaction against the supplied chart (a Transaction is not tied to the chart
  * that validated it) and flatten them into Postings. Throws on a duplicate Transaction id.
  */
@@ -39,15 +59,7 @@ export const scanLedger = (
 ): readonly ScannedPosting[] => {
 	const seen = new Set<string>()
 	return transactions.flatMap((tx, index) => {
-		if (seen.has(tx.id)) {
-			throw new LedgerValidationError(
-				"DUPLICATE_TRANSACTION_ID",
-				`transactions[${index}].id`,
-				tx.id,
-				"is used by an earlier transaction",
-			)
-		}
-		seen.add(tx.id)
+		assertNewTransactionId(seen, tx, index)
 		const checked = recheck(tx, index, chart)
 		return checked.postings.map((posting) => ({
 			account: chart.get(posting.accountId)!,

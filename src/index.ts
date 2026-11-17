@@ -13,6 +13,13 @@ export { balance } from "./balance"
 export type { BalanceRow } from "./balances"
 export { balances } from "./balances"
 export { createChartOfAccounts } from "./chart"
+export type {
+	ChartConflictAccountRow,
+	ChartConflictReason,
+	ChartConflicts,
+	ChartConflictTransactionRow,
+} from "./chart-conflict-report"
+export { chartConflicts } from "./chart-conflicts"
 export type { ChartOfAccounts } from "./chart-map"
 export type { CompoundLeg } from "./compound"
 export { compound } from "./compound"
