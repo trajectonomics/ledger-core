@@ -26,6 +26,9 @@ export const thrown = (run: () => unknown): { code?: string; field?: string } | 
 	return undefined
 }
 
+/** The `field` of the error a thunk throws, or undefined. */
+export const fieldOf = (run: () => unknown): string | undefined => thrown(run)?.field
+
 /** The error code a thunk throws, or undefined when it does not throw. */
 export const codeOf = (run: () => unknown): string | undefined => {
 	try {

@@ -9,7 +9,8 @@ import { scanLedger } from "./ledger-scan"
 import { toSafeAmount } from "./safe-amount"
 import type { Transaction } from "./transaction"
 
-/** One Leaf Account's raw signed Balance (Debit `+`, Credit `-`) in its own Currency. */
+/** One Leaf Account's raw signed amount (Debit `+`, Credit `-`) in its own Currency: its Balance
+ * up to a date, or its net movement over a period. */
 export interface BalanceRow {
 	readonly entityId: string
 	readonly accountId: AccountId
