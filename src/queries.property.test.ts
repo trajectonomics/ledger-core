@@ -5,82 +5,18 @@ import {
 	nestedChart,
 	rootHeaders,
 } from "./header-rollup.fixtures"
-import type { PostingInput, Transaction } from "./index"
-import { balances, headerRollup, netWorth, profitAndLoss, trialBalance } from "./index"
-import { chart, tx } from "./queries.fixtures"
-
-/** Deterministic mulberry32 PRNG so failures are reproducible. */
-const rng =
-	(seed: number): (() => number) =>
-	() => {
-		seed = (seed + 0x6d2b79f5) | 0
-		let t = Math.imul(seed ^ (seed >>> 15), 1 | seed)
-		t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
-		return ((t ^ (t >>> 14)) >>> 0) / 4294967296
-	}
-
-/** Accounts that can balance each other: same Entity and Currency. */
-const groups = [
-	{ currency: "THB", ids: ["cash", "savings", "loan", "equity", "salary", "food", "interest"] },
-	{ currency: "USD", ids: ["usd-wallet", "equity-usd"] },
-	{ currency: "THB", ids: ["other-cash", "other-equity"] },
-] as const
-
-const pick = <T>(items: readonly T[], next: () => number): T =>
-	items[Math.floor(next() * items.length)]!
-
-const postingsOf = (next: () => number): PostingInput[] => {
-	const group = pick(groups, next)
-	const legs = Array.from({ length: 1 + Math.floor(next() * 3) }, () => ({
-		accountId: pick(group.ids, next),
-		amount: (1 + Math.floor(next() * 1_000_000)) * (next() < 0.5 ? -1 : 1),
-		currency: group.currency,
-		...(next() < 0.5 ? { dimensions: { team: pick(["a", "b", "c"], next) } } : {}),
-	}))
-	const sum = legs.reduce((acc, l) => acc + l.amount, 0)
-	const closing = sum === 0 ? [1, -1] : [-sum]
-	return [
-		...legs,
-		...closing.map((amount) => ({
-			accountId: pick(group.ids, next),
-			amount,
-			currency: group.currency,
-		})),
-	]
-}
-
-const ledgerOf = (seed: number): Transaction[] => {
-	const next = rng(seed)
-	return Array.from({ length: 1 + Math.floor(next() * 12) }, (_, i) =>
-		tx(
-			`t${i}`,
-			`2024-0${1 + Math.floor(next() * 3)}-${10 + Math.floor(next() * 18)}`,
-			postingsOf(next),
-		),
-	)
-}
-
-const shuffled = <T>(items: readonly T[], next: () => number): T[] =>
-	items
-		.map((item) => ({ item, key: next() }))
-		.sort((a, b) => a.key - b.key)
-		.map(({ item }) => item)
-
-const pairKey = (r: { entityId: string; currency: string }): string => `${r.entityId}/${r.currency}`
-const byPair = (
-	rows: readonly { entityId: string; currency: string; amount: number }[],
-): Map<string, number> => new Map(rows.map((r) => [pairKey(r), r.amount]))
-
-/** Sum amounts per `(Entity, Currency)`, keeping pairs that net to zero. */
-const sumByPair = (
-	rows: readonly { entityId: string; currency: string; amount: number }[],
-): Map<string, number> => {
-	const sums = new Map<string, number>()
-	for (const r of rows) sums.set(pairKey(r), (sums.get(pairKey(r)) ?? 0) + r.amount)
-	return sums
-}
-
-const seeds = Array.from({ length: 200 }, (_, i) => i + 1)
+import { balances, headerRollup, movements, netWorth, profitAndLoss, trialBalance } from "./index"
+import { chart } from "./queries.fixtures"
+import {
+	byPair,
+	ledgerOf,
+	pairKey,
+	rng,
+	rowKey,
+	seeds,
+	shuffled,
+	sumByPair,
+} from "./queries.property.fixtures"
 
 describe("query properties", () => {
 	it("balances sum to zero per Entity and Currency", () => {
@@ -115,6 +51,7 @@ describe("query properties", () => {
 			)
 			expect(netWorth(other, "2024-02-20", chart)).toEqual(netWorth(txs, "2024-02-20", chart))
 			expect(profitAndLoss(other, period, chart)).toEqual(profitAndLoss(txs, period, chart))
+			expect(movements(other, period, chart)).toEqual(movements(txs, period, chart))
 			for (const options of [
 				{ ...period, groupBy: "team" },
 				{ ...period, where: { team: "a" } },
@@ -167,6 +104,43 @@ describe("query properties", () => {
 				headerRollup(txs, asOf, nestedChart).map((r) => [`${r.accountId}|${pairKey(r)}`, r.amount]),
 			)
 			expect(actual, `seed ${seed}`).toEqual(expected)
+		}
+	})
+
+	it("Leaf Period Movements sum to zero per Entity and Currency", () => {
+		const period = { from: "2024-01-01", to: "2024-03-31" }
+		for (const seed of seeds) {
+			for (const [pair, sum] of sumByPair(movements(ledgerOf(seed), period, chart))) {
+				expect(sum, `seed ${seed} ${pair}`).toBe(0)
+			}
+		}
+	})
+
+	it("a movement equals the Balance at its end minus the Balance at the day before its start", () => {
+		const period = { from: "2024-02-01", to: "2024-02-28" }
+		for (const seed of seeds) {
+			const txs = ledgerOf(seed)
+			const at = new Map(balances(txs, "2024-02-28", chart).map((r) => [rowKey(r), r.amount]))
+			const before = new Map(balances(txs, "2024-01-31", chart).map((r) => [rowKey(r), r.amount]))
+			for (const r of movements(txs, period, chart)) {
+				const expected = (at.get(rowKey(r)) ?? 0) - (before.get(rowKey(r)) ?? 0)
+				expect(r.amount, `seed ${seed} ${rowKey(r)}`).toBe(expected)
+			}
+		}
+	})
+
+	it("two adjacent periods add up to the period they span", () => {
+		const january = { from: "2024-01-01", to: "2024-01-31" }
+		const february = { from: "2024-02-01", to: "2024-02-28" }
+		const span = { from: "2024-01-01", to: "2024-02-28" }
+		for (const seed of seeds) {
+			const txs = ledgerOf(seed)
+			const first = movements(txs, january, chart)
+			const second = movements(txs, february, chart)
+			const sum = new Map(first.map((r, i) => [rowKey(r), r.amount + second[i]!.amount]))
+			expect(sum, `seed ${seed}`).toEqual(
+				new Map(movements(txs, span, chart).map((r) => [rowKey(r), r.amount])),
+			)
 		}
 	})
 

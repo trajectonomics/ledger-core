@@ -3,6 +3,7 @@ import {
 	balances,
 	headerPeriodRollup,
 	headerRollup,
+	movements,
 	netWorth,
 	parseCurrency,
 	profitAndLoss,
@@ -64,6 +65,7 @@ describe("query results", () => {
 			{ rows: balances(ledger, asOf, chart) },
 			{ rows: headerRollup(ledger, asOf, chart) },
 			{ rows: headerPeriodRollup(ledger, year, chart) },
+			{ rows: movements(ledger, year, chart) },
 			netWorth(ledger, asOf, chart),
 			trialBalance(ledger, asOf, chart),
 			profitAndLoss(ledger, year, chart),
@@ -88,6 +90,7 @@ describe("query results", () => {
 		balances(ledger, asOf, chart)
 		headerRollup(ledger, asOf, chart)
 		headerPeriodRollup(ledger, year, chart)
+		movements(ledger, year, chart)
 		netWorth(ledger, asOf, chart)
 		trialBalance(ledger, asOf, chart)
 		profitAndLoss(ledger, { ...year, groupBy: "costCentre", where }, chart)
@@ -98,8 +101,10 @@ describe("query results", () => {
 	it("survives a JSON round trip", () => {
 		const rows = headerRollup(ledger, asOf, chart)
 		const periodRows = headerPeriodRollup(ledger, year, chart)
+		const movementRows = movements(ledger, year, chart)
 		expect(JSON.parse(JSON.stringify(rows))).toEqual(rows)
 		expect(JSON.parse(JSON.stringify(periodRows))).toEqual(periodRows)
+		expect(JSON.parse(JSON.stringify(movementRows))).toEqual(movementRows)
 		const cashStatement = statement(ledger, "cash", year, chart)
 		expect(JSON.parse(JSON.stringify(cashStatement))).toEqual(cashStatement)
 	})

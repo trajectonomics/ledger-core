@@ -1,38 +1,30 @@
 import { describe, expect, it } from "bun:test"
-import { codeOf, thrown } from "./builders.fixtures"
+import { codeOf, fieldOf, thrown } from "./builders.fixtures"
 import {
 	balance,
 	balances,
-	createChartOfAccounts,
 	headerPeriodRollup,
 	headerRollup,
+	movements,
 	netWorth,
 	profitAndLoss,
 	trialBalance,
 	validateTransaction,
 } from "./index"
-import { chart, thb, tx } from "./queries.fixtures"
-
-const MAX = Number.MAX_SAFE_INTEGER
-const BIG = 8e15
-
-const post = (id: string, debit: string, credit: string, amount: number, dims = {}) =>
-	tx(id, "2024-01-01", [thb(debit, amount, dims), thb(credit, -amount)])
-
-/** The `field` of the error a thunk throws, or undefined. */
-const fieldOf = (run: () => unknown): string | undefined => thrown(run)?.field
-
-/** A chart whose Headers sort before its other Headers, so sorted order decides the reported row. */
-const hierarchyChart = createChartOfAccounts([
-	{ id: "expenses", type: "expense", currency: "THB" },
-	{ id: "food", type: "expense", currency: "THB", parentId: "expenses" },
-	{ id: "interest", type: "expense", currency: "THB", parentId: "expenses" },
-	{ id: "assets", type: "asset", currency: "THB" },
-	{ id: "property", type: "asset", currency: "THB", parentId: "assets" },
-	{ id: "receivables", type: "asset", currency: "THB", parentId: "assets" },
-])
-
-const oneDay = { from: "2024-01-01", to: "2024-01-01" }
+import { chart } from "./queries.fixtures"
+import {
+	BIG,
+	cumulativeOverflow,
+	february,
+	hierarchyChart,
+	january,
+	januaryFebruary,
+	MAX,
+	offsetByReversal,
+	oneDay,
+	post,
+	wholeYear,
+} from "./queries.overflow.fixtures"
 
 describe("overflow", () => {
 	it("accepts a Balance of exactly the safe integer limit", () => {
@@ -162,28 +154,36 @@ describe("overflow", () => {
 	})
 
 	it("accepts a Leaf that overflows across the whole ledger but is safe inside the period", () => {
-		const txs = [
-			tx("a", "2024-01-01", [thb("cash", BIG), thb("equity", -BIG)]),
-			tx("b", "2024-02-01", [thb("cash", BIG), thb("equity", -BIG)]),
-		]
-		const february = { from: "2024-02-01", to: "2024-02-28" }
-		expect(thrown(() => headerPeriodRollup(txs, february, chart))).toBeUndefined()
-		expect(
-			codeOf(() => headerPeriodRollup(txs, { from: "2024-01-01", to: "2024-02-28" }, chart)),
-		).toBe("AMOUNT_OVERFLOW")
+		expect(thrown(() => headerPeriodRollup(cumulativeOverflow, february, chart))).toBeUndefined()
+		expect(codeOf(() => headerPeriodRollup(cumulativeOverflow, januaryFebruary, chart))).toBe(
+			"AMOUNT_OVERFLOW",
+		)
 	})
 
 	it("rejects an in-period overflow that a later Reversal would offset", () => {
-		const txs = [
-			tx("a", "2024-01-01", [thb("cash", MAX), thb("equity", -MAX)]),
-			tx("b", "2024-01-02", [thb("cash", 1), thb("equity", -1)]),
-			tx("r", "2024-02-10", [thb("cash", -1), thb("equity", 1)]),
-		]
-		expect(
-			thrown(() => headerPeriodRollup(txs, { from: "2024-01-01", to: "2024-12-31" }, chart)),
-		).toBeUndefined()
-		expect(
-			codeOf(() => headerPeriodRollup(txs, { from: "2024-01-01", to: "2024-01-31" }, chart)),
-		).toBe("AMOUNT_OVERFLOW")
+		expect(thrown(() => headerPeriodRollup(offsetByReversal, wholeYear, chart))).toBeUndefined()
+		expect(codeOf(() => headerPeriodRollup(offsetByReversal, january, chart))).toBe(
+			"AMOUNT_OVERFLOW",
+		)
+	})
+
+	it("names the query called and the Account for an overflowing movement row", () => {
+		const txs = [post("a", "cash", "equity", MAX), post("b", "cash", "equity", 1)]
+		expect(thrown(() => movements(txs, oneDay, chart))).toMatchObject({
+			code: "AMOUNT_OVERFLOW",
+			field: "movements[cash]",
+		})
+	})
+
+	it("accepts a Leaf whose Balance overflows across the ledger but whose movement is safe", () => {
+		expect(thrown(() => movements(cumulativeOverflow, february, chart))).toBeUndefined()
+		expect(codeOf(() => movements(cumulativeOverflow, januaryFebruary, chart))).toBe(
+			"AMOUNT_OVERFLOW",
+		)
+	})
+
+	it("rejects a movement overflow that a later Reversal would offset", () => {
+		expect(thrown(() => movements(offsetByReversal, wholeYear, chart))).toBeUndefined()
+		expect(codeOf(() => movements(offsetByReversal, january, chart))).toBe("AMOUNT_OVERFLOW")
 	})
 })
