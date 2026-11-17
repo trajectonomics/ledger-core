@@ -118,7 +118,7 @@ const expectMapped = (txs: readonly Transaction[], each: ChartOfAccounts, label:
 
 const seeds = Array.from({ length: 100 }, (_, i) => i + 1)
 
-describe("chartConflicts properties", () => {
+describe("chart conflict properties", () => {
 	it("is empty exactly when every reading query reads the same ledger", () => {
 		for (const seed of seeds) {
 			const txs = ledgerOf(seed)

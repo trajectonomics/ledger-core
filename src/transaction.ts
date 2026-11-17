@@ -44,17 +44,15 @@ export const unbalancedGroups = (
 	postings: readonly Posting[],
 	chart: ChartOfAccounts,
 ): readonly UnbalancedGroup[] => {
-	const sums = new Map<string, bigint>()
+	const groups = new Map<string, { entityId: string; currency: Currency; sum: bigint }>()
 	for (const { accountId, amount, currency } of postings) {
-		const key = JSON.stringify([chart.get(accountId)?.entityId, currency])
-		sums.set(key, (sums.get(key) ?? 0n) + BigInt(amount))
+		const entityId = chart.get(accountId)!.entityId
+		const key = JSON.stringify([entityId, currency])
+		const group = groups.get(key)
+		if (group) group.sum += BigInt(amount)
+		else groups.set(key, { entityId, currency, sum: BigInt(amount) })
 	}
-	return [...sums]
-		.filter(([, sum]) => sum !== 0n)
-		.map(([key, sum]) => {
-			const [entityId, currency] = JSON.parse(key) as [string, Currency]
-			return { entityId, currency, sum }
-		})
+	return [...groups.values()].filter((group) => group.sum !== 0n)
 }
 
 const assertBalanced = (postings: readonly Posting[], chart: ChartOfAccounts): void => {

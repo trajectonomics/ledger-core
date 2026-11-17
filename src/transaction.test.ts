@@ -32,15 +32,8 @@ const tx = (
 	postings,
 	...extra,
 })
-const codeOf = (input: Parameters<typeof validateTransaction>[0]): string | undefined => {
-	try {
-		validateTransaction(input, chart)
-	} catch (error) {
-		if (error instanceof LedgerValidationError) return error.code
-		throw error
-	}
-	return undefined
-}
+const codeOf = (input: Parameters<typeof validateTransaction>[0]): string | undefined =>
+	thrownBy(() => validateTransaction(input, chart))?.code
 
 describe("validateTransaction accepts", () => {
 	it("a balanced debit/credit pair and returns it", () => {
@@ -173,14 +166,8 @@ describe("unforgeable Transaction brand", () => {
 })
 
 describe("error field paths and rule precedence", () => {
-	const fieldOf = (input: Parameters<typeof validateTransaction>[0]): string | undefined => {
-		try {
-			validateTransaction(input, chart)
-		} catch (error) {
-			return (error as LedgerValidationError).field
-		}
-		return undefined
-	}
+	const fieldOf = (input: Parameters<typeof validateTransaction>[0]): string | undefined =>
+		thrownBy(() => validateTransaction(input, chart))?.field
 	it("points at the offending posting and property", () => {
 		expect(fieldOf(tx([p("rent", 5), p("cash", 0)]))).toBe("postings[1].amount")
 		expect(fieldOf(tx([p("rent", 5), p("assets", -5)]))).toBe("postings[1].accountId")

@@ -1,8 +1,12 @@
-import type { ChartConflictReason, ChartConflicts, UnbalancedSlot } from "./chart-conflict-report"
+import type {
+	AccountTally,
+	ChartConflictReason,
+	ChartConflicts,
+	UnbalancedSlot,
+} from "./chart-conflict-report"
 import { reportOf } from "./chart-conflict-report"
 import type { ChartOfAccounts } from "./chart-map"
 import { LedgerValidationError } from "./errors"
-import type { AccountId, TransactionId } from "./ids"
 import { assertNewTransactionId } from "./ledger-scan"
 import type { Posting } from "./posting"
 import { validatePosting } from "./posting"
@@ -23,20 +27,29 @@ const reasonOf = (error: LedgerValidationError): ChartConflictReason => {
 	}
 }
 
-/** The Postings of one unreadable `(Account, reason)`, counted as the walk goes. */
-interface AccountSlot {
-	readonly accountId: AccountId
-	readonly reason: ChartConflictReason
-	postings: number
-	readonly transactions: Set<TransactionId>
+/** Count one rejected Posting under its `(accountId, reason)`, with the Transaction it belongs to. */
+const count = (
+	tallies: Map<string, AccountTally>,
+	transaction: Transaction,
+	posting: Posting,
+	reason: ChartConflictReason,
+): void => {
+	const key = JSON.stringify([posting.accountId, reason])
+	const tally = tallies.get(key)
+	tallies.set(key, {
+		accountId: posting.accountId,
+		reason,
+		postings: (tally?.postings ?? 0) + 1,
+		transactions: new Set([...(tally?.transactions ?? []), transaction.id]),
+	})
 }
 
-/** Check every Posting of one Transaction, recording the ones the chart refuses. */
+/** Check every Posting of one Transaction, counting the ones the chart refuses; return the rest. */
 const walk = (
 	transaction: Transaction,
 	chart: ChartOfAccounts,
 	at: number,
-	accounts: Map<string, AccountSlot>,
+	tallies: Map<string, AccountTally>,
 ): readonly Posting[] => {
 	const readable: Posting[] = []
 	transaction.postings.forEach((posting, index) => {
@@ -44,32 +57,10 @@ const walk = (
 			readable.push(validatePosting(posting, chart, `transactions[${at}].postings[${index}]`))
 		} catch (error) {
 			if (!(error instanceof LedgerValidationError)) throw error
-			record(accounts, transaction, posting, reasonOf(error))
+			count(tallies, transaction, posting, reasonOf(error))
 		}
 	})
 	return readable
-}
-
-/** Record one rejected Posting under `(accountId, reason)`, counting Postings and Transactions. */
-const record = (
-	accounts: Map<string, AccountSlot>,
-	transaction: Transaction,
-	posting: Posting,
-	reason: ChartConflictReason,
-): void => {
-	const key = JSON.stringify([posting.accountId, reason])
-	const slot = accounts.get(key)
-	if (slot) {
-		slot.postings += 1
-		slot.transactions.add(transaction.id)
-		return
-	}
-	accounts.set(key, {
-		accountId: posting.accountId,
-		reason,
-		postings: 1,
-		transactions: new Set([transaction.id]),
-	})
 }
 
 /**
@@ -82,15 +73,15 @@ export const chartConflicts = (
 	chart: ChartOfAccounts,
 ): ChartConflicts => {
 	const seen = new Set<string>()
-	const accounts = new Map<string, AccountSlot>()
+	const tallies = new Map<string, AccountTally>()
 	const unbalanced: UnbalancedSlot[] = []
 	transactions.forEach((transaction, index) => {
 		assertNewTransactionId(seen, transaction, index)
-		const readable = walk(transaction, chart, index, accounts)
+		const readable = walk(transaction, chart, index, tallies)
 		if (readable.length !== transaction.postings.length) return
 		for (const group of unbalancedGroups(readable, chart)) {
 			unbalanced.push({ transactionId: transaction.id, ...group })
 		}
 	})
-	return reportOf(accounts.values(), unbalanced)
+	return reportOf(tallies.values(), unbalanced)
 }
