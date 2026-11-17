@@ -16,6 +16,16 @@ export const chart: ChartOfAccounts = createChartOfAccounts([
 	{ id: "other-cash", type: "asset", currency: "USD", entityId: "other-co" },
 ])
 
+/** The error a thunk throws, or undefined. */
+export const thrown = (run: () => unknown): { code?: string; field?: string } | undefined => {
+	try {
+		run()
+	} catch (error) {
+		return error as { code?: string; field?: string }
+	}
+	return undefined
+}
+
 /** The error code a thunk throws, or undefined when it does not throw. */
 export const codeOf = (run: () => unknown): string | undefined => {
 	try {

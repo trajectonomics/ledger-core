@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import { codeOf } from "./builders.fixtures"
+import { codeOf, thrown } from "./builders.fixtures"
 import {
 	compound,
 	createChartOfAccounts,
@@ -34,16 +34,6 @@ const stmt = (
 		balance,
 	})),
 })
-
-/** The error a thunk throws, or undefined. */
-const thrown = (run: () => unknown): { code?: string; field?: string } | undefined => {
-	try {
-		run()
-	} catch (error) {
-		return error as { code?: string; field?: string }
-	}
-	return undefined
-}
 
 describe("statement", () => {
 	it("carries the Balance from before the period into opening", () => {
@@ -91,7 +81,7 @@ describe("statement", () => {
 	})
 
 	it("shows each Posting of a Compound Entry as its own row", () => {
-		const split = compound(
+		const entry = compound(
 			{
 				id: "c1",
 				date: "2024-02-25",
@@ -104,7 +94,7 @@ describe("statement", () => {
 			},
 			chart,
 		)
-		const rows = statement([...ledger, split], "cash", february, chart).rows
+		const rows = statement([...ledger, entry], "cash", february, chart).rows
 		expect(
 			rows.slice(-2).map(({ transactionId, amount }) => [String(transactionId), amount]),
 		).toEqual([
@@ -185,12 +175,14 @@ describe("statement", () => {
 			["crypto", 1, "USD"],
 			["equity", -1, "USD"],
 		])
-		const split = raw(thb, "m3", [
+		const crossEntity = raw(thb, "m3", [
 			["cash", 5, "THB"],
 			["other-cash", -5, "THB"],
 		])
 		expect(codeOf(() => statement([mismatch], "cash", february, chart))).toBe("CURRENCY_MISMATCH")
 		expect(codeOf(() => statement([unknown], "cash", february, chart))).toBe("UNKNOWN_ACCOUNT")
-		expect(codeOf(() => statement([split], "cash", february, chart))).toBe("UNBALANCED_TRANSACTION")
+		expect(codeOf(() => statement([crossEntity], "cash", february, chart))).toBe(
+			"UNBALANCED_TRANSACTION",
+		)
 	})
 })

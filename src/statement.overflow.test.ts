@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import { codeOf } from "./builders.fixtures"
+import { codeOf, thrown } from "./builders.fixtures"
 import { createChartOfAccounts, statement, validateTransaction } from "./index"
 import { chart, thb, tx } from "./queries.fixtures"
 
@@ -8,16 +8,6 @@ const period = { from: "2024-02-01", to: "2024-02-29" }
 
 const post = (id: string, debit: string, credit: string, amount: number, date = "2024-01-01") =>
 	tx(id, date, [thb(debit, amount), thb(credit, -amount)])
-
-/** The error a thunk throws, or undefined. */
-const thrown = (run: () => unknown): { code?: string; field?: string } | undefined => {
-	try {
-		run()
-	} catch (error) {
-		return error as { code?: string; field?: string }
-	}
-	return undefined
-}
 
 describe("statement overflow", () => {
 	it("rejects an opening past the limit in either direction, naming statement.opening", () => {

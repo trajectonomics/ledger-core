@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import { codeOf } from "./builders.fixtures"
+import { codeOf, thrown } from "./builders.fixtures"
 import {
 	balance,
 	balances,
@@ -18,16 +18,6 @@ const BIG = 8e15
 
 const post = (id: string, debit: string, credit: string, amount: number, dims = {}) =>
 	tx(id, "2024-01-01", [thb(debit, amount, dims), thb(credit, -amount)])
-
-/** The error a thunk throws, or undefined. */
-const thrown = (run: () => unknown): { code?: string; field?: string } | undefined => {
-	try {
-		run()
-	} catch (error) {
-		return error as { code?: string; field?: string }
-	}
-	return undefined
-}
 
 /** The `field` of the error a thunk throws, or undefined. */
 const fieldOf = (run: () => unknown): string | undefined => thrown(run)?.field
