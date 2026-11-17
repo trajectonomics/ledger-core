@@ -11,7 +11,7 @@ import {
 	trialBalance,
 	validateTransaction,
 } from "./index"
-import { chart, fieldOf, thrown } from "./queries.fixtures"
+import { chart } from "./queries.fixtures"
 import {
 	BIG,
 	cumulativeOverflow,

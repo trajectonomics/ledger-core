@@ -14,8 +14,6 @@ export const post = (
 	dims = {},
 ): Transaction => tx(id, "2024-01-01", [thb(debit, amount, dims), thb(credit, -amount)])
 
-export { fieldOf, thrown } from "./queries.fixtures"
-
 /** A chart whose Headers sort before its other Headers, so sorted order decides the reported row. */
 export const hierarchyChart: ChartOfAccounts = createChartOfAccounts([
 	{ id: "expenses", type: "expense", currency: "THB" },

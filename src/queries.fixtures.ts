@@ -77,19 +77,6 @@ export const bal = (
 	amount,
 })
 
-/** The error a thunk throws, or undefined. */
-export const thrown = (run: () => unknown): { code?: string; field?: string } | undefined => {
-	try {
-		run()
-	} catch (error) {
-		return error as { code?: string; field?: string }
-	}
-	return undefined
-}
-
-/** The `field` of the error a thunk throws, or undefined. */
-export const fieldOf = (run: () => unknown): string | undefined => thrown(run)?.field
-
 /** A total with the currency brand applied, for literal expectations. */
 export const tot = (entityId: string, currency: string, amount: number): Total => ({
 	entityId,

@@ -1,7 +1,8 @@
 import { describe, expect, it } from "bun:test"
+import { thrown } from "./builders.fixtures"
 import { nestedChart, nestedLedger } from "./header-rollup.fixtures"
 import { createChartOfAccounts, movements, reverse, type Transaction } from "./index"
-import { accountInputs, bal, chart, ledger, thb, thrown, tx } from "./queries.fixtures"
+import { accountInputs, bal, chart, ledger, thb, tx } from "./queries.fixtures"
 
 const row = bal
 
